@@ -1,51 +1,47 @@
-# Introduction to GitHub
+# 🧹 Organizador de Faxinas
 
-_Get started using GitHub in less than an hour._
+Aplicativo web simples para organizar as casas atendidas por um serviço de limpeza (cleaning) nos EUA. Feito para uso pela própria faxineira/cliente, direto do celular ou computador — **sem precisar de internet, servidor ou instalação**.
 
-## Welcome
+## O que o app faz
 
-People use GitHub to build some of the most advanced technologies in the world. Whether you’re visualizing data or building a new game, there’s a whole community and set of tools on GitHub that can help you do it even better. GitHub Skills’ “Introduction to GitHub” exercise guides you through everything you need to start contributing in less than an hour.
+Para cada casa você pode cadastrar:
 
-- **Who is this for**: New developers, new GitHub users, and students.
-- **What you'll learn**: We'll introduce repositories, branches, commits, and pull requests.
-- **What you'll build**: We'll make a short Markdown file you can use as your [profile README](https://docs.github.com/account-and-profile/setting-up-and-managing-your-github-profile/customizing-your-profile/managing-your-profile-readme).
-- **Prerequisites**: None. This exercise is a great introduction for your first day on GitHub.
-- **How long**: This exercise takes less than one hour to complete.
+- **Fotos** da casa (ex: fachada, pontos de atenção, "antes/depois")
+- **Endereço** completo, com link direto para abrir no Google Maps
+- **Processo de faxina**: uma lista de tarefas (checklist) que pode ser marcada conforme vai limpando, e reiniciada a cada nova visita
+- **Senhas / códigos das portas**, alarme, portão, caixa de chaves etc. (ficam ocultas por padrão — toque no 👁️ para revelar)
+- **Observações gerais** (ex: tem cachorro, dia de lixo, preferências do cliente)
 
-In this exercise, you will:
+Outros recursos:
 
-1. Create a branch
-2. Commit a file
-3. Open a pull request
-4. Merge your pull request
+- 🔒 **Tela de PIN** ao abrir o app, para proteger as senhas se alguém pegar o celular
+- 🔎 Busca rápida por nome ou endereço da casa
+- 💾 **Exportar / importar backup** em JSON (Configurações ⚙️) — importante porque os dados ficam salvos apenas neste aparelho/navegador
+- 📱 Layout pensado para celular, mas funciona em qualquer navegador
 
-### How to start this exercise
+## Como usar
 
-1. Right-click **Copy Exercise** and open the link in a new tab.
+**Opção 1 — mais simples:** baixe o repositório e abra o arquivo `index.html` direto no navegador do celular ou computador (funciona offline, sem precisar de internet).
 
-   <a id="copy-exercise">
-      <img src="https://img.shields.io/badge/📠_Copy_Exercise-AAA" height="25pt"/>
-   </a>
+**Opção 2 — GitHub Pages (recomendado para acessar de qualquer lugar):**
 
-2. In the new tab, most of the prompts will automatically fill in for you.
-   - For owner, choose your personal account or an organization to host the repository.
-   - We recommend creating a public repository, as private repositories will [use Actions minutes](https://docs.github.chttps://github.com/marcelagarcia42/skills-introduction-to-github/billing/managing-billing-for-github-actions/about-billing-for-github-actions).
-   - Scroll down and click the **Create repository** button at the bottom of the form.
+1. No GitHub, vá em **Settings → Pages**
+2. Em "Branch", selecione a branch principal (`main`) e a pasta `/ (root)`
+3. Salve. Em alguns minutos o app estará disponível em um link do tipo `https://SEU-USUARIO.github.io/skills-introduction-to-github/`
+4. Acesse esse link pelo celular e, se quiser, adicione à tela inicial (funciona como um app)
 
-3. After your new repository is created, wait about 20 seconds for the exercise to be prepared and buttons updated. You will continue working from your copy of the exercise.
-   - The **Copy Exercise** button will deactivate, changing to gray.
-   - The **Start Exercise** button will activate, changing to green.
-   - You will likely need to refresh the page.
+## Importante sobre os dados e segurança
 
-4. Click **Start Exercise**. Follow the step-by-step instructions and feedback will be provided as you progress.
+- Todos os dados (casas, fotos, senhas) ficam salvos **apenas no navegador deste aparelho** (`localStorage`), não são enviados para nenhum servidor.
+- Isso significa que, se limpar os dados do navegador, trocar de celular ou desinstalar o app, as informações podem se perder — **por isso é essencial fazer backup regularmente** em Configurações ⚙️ → Exportar backup.
+- O PIN de bloqueio é uma proteção simples (não é criptografia forte). Ele evita que alguém abra o app casualmente, mas não substitui manter o celular em si protegido (com senha de tela, por exemplo).
 
-   <a id="start-exercise" href="https://github.com/marcelagarcia42/skills-introduction-to-github/issues/1">
-      <img src="https://img.shields.io/badge/🚀_Start_Exercise-008000" height="25pt"/>
-   </a>
+## Estrutura do projeto
 
-> [!IMPORTANT]
-> The **Start Exercise** button will activate after copying the repository. You will probably need to refresh the page.
+```
+index.html       # telas do app
+css/style.css     # estilo visual
+js/app.js         # toda a lógica (cadastro, senhas, checklist, fotos, backup)
+```
 
----
-
-&copy; 2025 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
+Não há dependências externas nem build necessário — é HTML/CSS/JS puro.
