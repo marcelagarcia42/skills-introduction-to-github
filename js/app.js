@@ -3,6 +3,7 @@
 /* ---------- Constants / storage ---------- */
 
 const STORAGE_KEY = "cleaningOrganizer.houses";
+const VISITS_KEY = "cleaningOrganizer.visits";
 const PIN_KEY = "cleaningOrganizer.pin";
 const MAX_PHOTO_DIMENSION = 1000; // px - photos are resized before saving
 const PHOTO_QUALITY = 0.7;
@@ -18,10 +19,13 @@ const ROOMS = [
 
 let state = {
   houses: [],
+  visits: [],
   currentHouseId: null,
   currentTab: "tab-info",
   currentRoom: ROOMS[0].key,
   revealedCodes: new Set(),
+  calendarYear: null,
+  calendarMonth: null,
 };
 
 /* ---------- Utilities ---------- */
@@ -67,6 +71,71 @@ function saveHouses() {
 
 function getHouse(id) {
   return state.houses.find((h) => h.id === id);
+}
+
+function loadVisits() {
+  try {
+    const raw = localStorage.getItem(VISITS_KEY);
+    state.visits = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    state.visits = [];
+  }
+}
+
+function saveVisits() {
+  try {
+    localStorage.setItem(VISITS_KEY, JSON.stringify(state.visits));
+    return true;
+  } catch (e) {
+    showToast("Storage is full! Delete old photos to free up space.");
+    return false;
+  }
+}
+
+/* ---------- Date / hours utilities ---------- */
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+// Formats a local Date as "YYYY-MM-DD" (matches <input type="date"> values).
+function toDateStr(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// Parses a "YYYY-MM-DD" string as a local date (avoids the UTC-midnight
+// shift that `new Date("YYYY-MM-DD")` causes in negative UTC offsets).
+function parseDateStr(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDateDisplay(s) {
+  return parseDateStr(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getWeekRange(refDate) {
+  const start = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - refDate.getDay());
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+  return { start, end };
+}
+
+function sumHours(visits) {
+  return visits.reduce((sum, v) => sum + (Number(v.hours) || 0), 0);
+}
+
+function formatHours(h) {
+  const rounded = Math.round(h * 100) / 100;
+  return `${rounded}h`;
+}
+
+function updateHoursBanner() {
+  const today = new Date();
+  const { start, end } = getWeekRange(today);
+  const startStr = toDateStr(start);
+  const endStr = toDateStr(end);
+  const weekVisits = state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
+  document.getElementById("hours-banner-text").textContent = `This week: ${formatHours(sumHours(weekVisits))} worked`;
 }
 
 function showToast(msg) {
@@ -157,7 +226,9 @@ function initLockScreen() {
 
 function unlockApp() {
   loadHouses();
+  loadVisits();
   renderHomeList();
+  updateHoursBanner();
   showScreen("screen-home");
 }
 
@@ -210,6 +281,89 @@ document.getElementById("btn-settings").onclick = () => {
   renderStorageInfo();
   showScreen("screen-settings");
 };
+
+document.getElementById("btn-calendar").onclick = openCalendar;
+document.getElementById("hours-banner").onclick = openCalendar;
+
+function openCalendar() {
+  const today = new Date();
+  state.calendarYear = today.getFullYear();
+  state.calendarMonth = today.getMonth();
+  renderCalendarScreen();
+  showScreen("screen-calendar");
+}
+
+document.getElementById("btn-prev-month").onclick = () => {
+  state.calendarMonth--;
+  if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
+  renderCalendarScreen();
+};
+
+document.getElementById("btn-next-month").onclick = () => {
+  state.calendarMonth++;
+  if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
+  renderCalendarScreen();
+};
+
+function renderCalendarScreen() {
+  const year = state.calendarYear;
+  const month = state.calendarMonth;
+
+  const monthLabel = new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  document.getElementById("calendar-month-label").textContent = monthLabel;
+
+  const monthPrefix = `${year}-${pad2(month + 1)}`;
+  const monthVisits = state.visits.filter((v) => v.date.startsWith(monthPrefix));
+  document.getElementById("stat-month-hours").textContent = formatHours(sumHours(monthVisits));
+
+  const today = new Date();
+  const { start, end } = getWeekRange(today);
+  const startStr = toDateStr(start);
+  const endStr = toDateStr(end);
+  const weekVisits = state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
+  document.getElementById("stat-week-hours").textContent = formatHours(sumHours(weekVisits));
+
+  const grid = document.getElementById("calendar-grid");
+  grid.innerHTML = "";
+  const firstDay = new Date(year, month, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = toDateStr(today);
+
+  for (let i = 0; i < startWeekday; i++) {
+    const empty = document.createElement("div");
+    empty.className = "calendar-day empty";
+    grid.appendChild(empty);
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${monthPrefix}-${pad2(day)}`;
+    const dayVisits = monthVisits.filter((v) => v.date === dateStr);
+    const cell = document.createElement("div");
+    cell.className = "calendar-day"
+      + (dateStr === todayStr ? " today" : "")
+      + (dayVisits.length ? " has-visits" : "");
+    cell.innerHTML = `<span>${day}</span>` + (dayVisits.length ? `<span class="day-dot"></span>` : "");
+    grid.appendChild(cell);
+  }
+
+  const list = document.getElementById("calendar-visits-list");
+  const empty = document.getElementById("calendar-visits-empty");
+  list.innerHTML = "";
+  const sorted = [...monthVisits].sort((a, b) => b.date.localeCompare(a.date));
+  empty.hidden = sorted.length > 0;
+  sorted.forEach((v) => {
+    const house = getHouse(v.houseId);
+    const row = document.createElement("div");
+    row.className = "item-row";
+    row.innerHTML = `
+      <div class="item-main">
+        <div class="item-title">${escapeHtml(house ? house.name : "Deleted house")}</div>
+        <div class="item-value">${formatDateDisplay(v.date)} · ${formatHours(v.hours)}${v.note ? " · " + escapeHtml(v.note) : ""}</div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
 
 /* ---------- House form: add / edit ---------- */
 
@@ -289,6 +443,8 @@ function openHouseDetail(id) {
   setRoom(ROOMS[0].key);
   renderDoorCodes(h);
   renderPhotos(h);
+  renderVisits(h);
+  document.getElementById("input-visit-date").value = toDateStr(new Date());
 
   showScreen("screen-house-detail");
 }
@@ -317,13 +473,67 @@ function setRoom(roomKey) {
 document.getElementById("btn-delete-house").onclick = () => {
   const h = getHouse(state.currentHouseId);
   if (!h) return;
-  if (confirm(`Delete "${h.name}"? This will erase its address, codes, checklist and photos.`)) {
+  if (confirm(`Delete "${h.name}"? This will erase its address, codes, checklist, photos and logged visits.`)) {
     state.houses = state.houses.filter((x) => x.id !== h.id);
+    state.visits = state.visits.filter((v) => v.houseId !== h.id);
     saveHouses();
+    saveVisits();
     renderHomeList();
+    updateHoursBanner();
     showScreen("screen-home");
   }
 };
+
+/* ---------- Cleaning visits (dates + hours worked) ---------- */
+
+function renderVisits(house) {
+  const list = document.getElementById("visits-list");
+  const empty = document.getElementById("visits-empty");
+  list.innerHTML = "";
+  const visits = state.visits
+    .filter((v) => v.houseId === house.id)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  empty.hidden = visits.length > 0;
+  visits.forEach((v) => {
+    const row = document.createElement("div");
+    row.className = "item-row";
+    row.innerHTML = `
+      <div class="item-main">
+        <div class="item-title">${formatDateDisplay(v.date)}</div>
+        <div class="item-value">${formatHours(v.hours)}${v.note ? " · " + escapeHtml(v.note) : ""}</div>
+      </div>
+      <button class="btn-delete-visit" title="Delete">🗑️</button>
+    `;
+    row.querySelector(".btn-delete-visit").onclick = () => {
+      state.visits = state.visits.filter((x) => x.id !== v.id);
+      saveVisits();
+      renderVisits(house);
+      updateHoursBanner();
+    };
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("visit-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const h = getHouse(state.currentHouseId);
+  if (!h) return;
+  const dateInput = document.getElementById("input-visit-date");
+  const hoursInput = document.getElementById("input-visit-hours");
+  const noteInput = document.getElementById("input-visit-note");
+  const date = dateInput.value;
+  const hours = parseFloat(hoursInput.value);
+  const note = noteInput.value.trim();
+  if (!date || !hours || hours <= 0) return;
+
+  state.visits.push({ id: uuid(), houseId: h.id, date, hours, note });
+  saveVisits();
+  dateInput.value = toDateStr(new Date());
+  hoursInput.value = "";
+  noteInput.value = "";
+  renderVisits(h);
+  updateHoursBanner();
+});
 
 /* ---------- Share as PDF ---------- */
 
@@ -579,7 +789,7 @@ document.getElementById("btn-change-pin").onclick = () => {
 };
 
 document.getElementById("btn-export").onclick = () => {
-  const data = JSON.stringify(state.houses, null, 2);
+  const data = JSON.stringify({ houses: state.houses, visits: state.visits }, null, 2);
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -599,18 +809,25 @@ document.getElementById("input-import").addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const imported = JSON.parse(reader.result);
-      if (!Array.isArray(imported)) throw new Error("Invalid format");
+      // Older backups were a bare array of houses (no visits included).
+      const importedHouses = Array.isArray(imported) ? imported : imported.houses;
+      const importedVisits = Array.isArray(imported) ? [] : (imported.visits || []);
+      if (!Array.isArray(importedHouses)) throw new Error("Invalid format");
       const merge = confirm(
-        "MERGE this backup with your current houses?\n\nOK = merge (adds the houses from the backup)\nCancel = REPLACE everything with the backup"
+        "MERGE this backup with your current houses?\n\nOK = merge (adds the houses/visits from the backup)\nCancel = REPLACE everything with the backup"
       );
       if (merge) {
-        state.houses = state.houses.concat(imported);
+        state.houses = state.houses.concat(importedHouses);
+        state.visits = state.visits.concat(importedVisits);
       } else {
-        state.houses = imported;
+        state.houses = importedHouses;
+        state.visits = importedVisits;
       }
       saveHouses();
+      saveVisits();
       renderHomeList();
       renderStorageInfo();
+      updateHoursBanner();
       showToast("Backup imported successfully!");
     } catch (err) {
       alert("Couldn't read this backup file.");
@@ -621,8 +838,9 @@ document.getElementById("input-import").addEventListener("change", (e) => {
 });
 
 document.getElementById("btn-reset-all").onclick = () => {
-  if (confirm("This will erase ALL houses, codes, photos and the PIN. This can't be undone. Continue?")) {
+  if (confirm("This will erase ALL houses, codes, photos, visits and the PIN. This can't be undone. Continue?")) {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(VISITS_KEY);
     localStorage.removeItem(PIN_KEY);
     location.reload();
   }
