@@ -7,10 +7,20 @@ const PIN_KEY = "cleaningOrganizer.pin";
 const MAX_PHOTO_DIMENSION = 1000; // px - photos are resized before saving
 const PHOTO_QUALITY = 0.7;
 
+const ROOMS = [
+  { key: "bathrooms", label: "Bathrooms" },
+  { key: "kitchen", label: "Kitchen" },
+  { key: "bedrooms", label: "Bedrooms" },
+  { key: "living_rooms", label: "Living Rooms" },
+  { key: "outdoor", label: "Outdoor Area" },
+  { key: "laundry", label: "Laundry" },
+];
+
 let state = {
   houses: [],
   currentHouseId: null,
   currentTab: "tab-info",
+  currentRoom: ROOMS[0].key,
   revealedCodes: new Set(),
 };
 
@@ -27,6 +37,22 @@ function loadHouses() {
   } catch (e) {
     state.houses = [];
   }
+  migrateChecklistRooms();
+}
+
+// Older checklist items (before rooms existed) have no `room` field.
+// Assign them to the first room so nothing goes missing.
+function migrateChecklistRooms() {
+  let changed = false;
+  state.houses.forEach((h) => {
+    (h.checklist || []).forEach((item) => {
+      if (!item.room) {
+        item.room = ROOMS[0].key;
+        changed = true;
+      }
+    });
+  });
+  if (changed) saveHouses();
 }
 
 function saveHouses() {
@@ -260,8 +286,8 @@ function openHouseDetail(id) {
   }
 
   switchTab("tab-info");
+  setRoom(ROOMS[0].key);
   renderDoorCodes(h);
-  renderChecklist(h);
   renderPhotos(h);
 
   showScreen("screen-house-detail");
@@ -275,6 +301,17 @@ function switchTab(tabId) {
   state.currentTab = tabId;
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === tabId));
+}
+
+document.querySelectorAll(".room-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setRoom(btn.dataset.room));
+});
+
+function setRoom(roomKey) {
+  state.currentRoom = roomKey;
+  document.querySelectorAll(".room-tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.room === roomKey));
+  const h = getHouse(state.currentHouseId);
+  if (h) renderChecklist(h);
 }
 
 document.getElementById("btn-delete-house").onclick = () => {
@@ -320,14 +357,24 @@ document.getElementById("btn-share-pdf").onclick = () => {
   }
 
   const checklistSection = document.getElementById("print-checklist-section");
-  const checklistList = document.getElementById("print-checklist-list");
-  checklistList.innerHTML = "";
-  if (h.checklist && h.checklist.length) {
+  const checklistGroups = document.getElementById("print-checklist-groups");
+  checklistGroups.innerHTML = "";
+  const hasItems = h.checklist && h.checklist.length;
+  if (hasItems) {
     checklistSection.hidden = false;
-    h.checklist.forEach((item) => {
-      const li = document.createElement("li");
-      li.textContent = `☐ ${item.text}`;
-      checklistList.appendChild(li);
+    ROOMS.forEach((room) => {
+      const items = h.checklist.filter((item) => item.room === room.key);
+      if (!items.length) return;
+      const heading = document.createElement("h3");
+      heading.textContent = room.label;
+      checklistGroups.appendChild(heading);
+      const ul = document.createElement("ul");
+      items.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = `☐ ${item.text}`;
+        ul.appendChild(li);
+      });
+      checklistGroups.appendChild(ul);
     });
   } else {
     checklistSection.hidden = true;
@@ -389,7 +436,9 @@ document.getElementById("door-code-form").addEventListener("submit", (e) => {
 function renderChecklist(house) {
   const list = document.getElementById("checklist-list");
   list.innerHTML = "";
-  (house.checklist || []).forEach((item) => {
+  (house.checklist || [])
+    .filter((item) => item.room === state.currentRoom)
+    .forEach((item) => {
     const row = document.createElement("div");
     row.className = "item-row" + (item.done ? " checked" : "");
     row.innerHTML = `
@@ -421,7 +470,7 @@ document.getElementById("checklist-form").addEventListener("submit", (e) => {
   const text = input.value.trim();
   if (!text) return;
   h.checklist = h.checklist || [];
-  h.checklist.push({ id: uuid(), text, done: false });
+  h.checklist.push({ id: uuid(), text, done: false, room: state.currentRoom });
   saveHouses();
   input.value = "";
   renderChecklist(h);

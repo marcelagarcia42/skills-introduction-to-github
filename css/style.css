@@ -236,6 +236,31 @@ h1 { font-size: 1.25rem; margin: 0; }
 .tab-content { display: none; padding: 16px; }
 .tab-content.active { display: block; }
 
+/* --- Room sub-tabs (inside Cleaning tab) --- */
+.room-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.room-tab-btn {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.room-tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -354,7 +379,8 @@ h1 { font-size: 1.25rem; margin: 0; }
     padding-bottom: 4px;
   }
   .print-house p { margin: 0 0 8px; white-space: pre-wrap; }
-  .print-house ul { margin: 0; padding-left: 20px; }
+  .print-house ul { margin: 0 0 12px; padding-left: 20px; }
   .print-house li { margin-bottom: 6px; }
+  .print-house h3 { font-size: 0.9rem; margin: 12px 0 4px; }
   .print-footer { margin-top: 32px; font-size: 0.75rem; color: #888; }
 }
