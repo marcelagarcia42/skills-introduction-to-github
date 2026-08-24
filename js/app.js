@@ -4,6 +4,7 @@
 
 const STORAGE_KEY = "cleaningOrganizer.houses";
 const VISITS_KEY = "cleaningOrganizer.visits";
+const EMPLOYEES_KEY = "cleaningOrganizer.employees";
 const PIN_KEY = "cleaningOrganizer.pin";
 const MAX_PHOTO_DIMENSION = 1000; // px - photos are resized before saving
 const PHOTO_QUALITY = 0.7;
@@ -20,6 +21,7 @@ const ROOMS = [
 let state = {
   houses: [],
   visits: [],
+  employees: [],
   currentHouseId: null,
   currentTab: "tab-info",
   currentRoom: ROOMS[0].key,
@@ -92,6 +94,47 @@ function saveVisits() {
   }
 }
 
+function loadEmployees() {
+  try {
+    const raw = localStorage.getItem(EMPLOYEES_KEY);
+    state.employees = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    state.employees = [];
+  }
+}
+
+function saveEmployees() {
+  try {
+    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(state.employees));
+  } catch (e) {
+    showToast("Storage is full! Delete old photos to free up space.");
+  }
+}
+
+// Adds an employee to the roster if her name isn't already there
+// (case-insensitive). Called whenever a visit is scheduled/logged for
+// someone new, so the roster grows without needing to be set up first.
+function addEmployeeIfNew(name) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const exists = state.employees.some((emp) => emp.name.toLowerCase() === trimmed.toLowerCase());
+  if (!exists) {
+    state.employees.push({ id: uuid(), name: trimmed });
+    saveEmployees();
+    renderEmployeeDatalist();
+  }
+}
+
+function renderEmployeeDatalist() {
+  const datalist = document.getElementById("employees-datalist");
+  datalist.innerHTML = "";
+  state.employees.forEach((emp) => {
+    const option = document.createElement("option");
+    option.value = emp.name;
+    datalist.appendChild(option);
+  });
+}
+
 /* ---------- Date / hours utilities ---------- */
 
 function pad2(n) {
@@ -136,6 +179,63 @@ function updateHoursBanner() {
   const endStr = toDateStr(end);
   const weekVisits = state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
   document.getElementById("hours-banner-text").textContent = `This week: ${formatHours(sumHours(weekVisits))} worked`;
+}
+
+// A visit with no hours yet is scheduled but not completed.
+function isPendingVisit(v) {
+  return v.hours === null || v.hours === undefined;
+}
+
+function createVisitRowElement(visit, { showHouse, onChange }) {
+  const pending = isPendingVisit(visit);
+  const row = document.createElement("div");
+  row.className = "item-row";
+
+  const titleParts = [];
+  if (showHouse) {
+    const house = getHouse(visit.houseId);
+    titleParts.push(escapeHtml(house ? house.name : "Deleted house"));
+  }
+  titleParts.push(escapeHtml(visit.employeeName || "Unassigned"));
+
+  const subtitleParts = [formatDateDisplay(visit.date)];
+  if (visit.note) subtitleParts.push(escapeHtml(visit.note));
+
+  row.innerHTML = `
+    <div class="item-main">
+      <div class="item-title">${titleParts.join(" · ")}</div>
+      <div class="item-value">${subtitleParts.join(" · ")}</div>
+    </div>
+    ${pending
+      ? `<span class="visit-status pending">Scheduled</span><button class="btn-complete-visit">✓ Complete</button>`
+      : `<span class="visit-status completed">${formatHours(visit.hours)}</span>`}
+    <button class="btn-delete-visit" title="Delete">🗑️</button>
+  `;
+
+  if (pending) {
+    row.querySelector(".btn-complete-visit").onclick = () => {
+      const input = prompt(`How many hours did ${visit.employeeName || "she"} spend at this house?`, "");
+      if (input === null) return;
+      const hours = parseFloat(input);
+      if (!input.trim() || isNaN(hours) || hours <= 0) {
+        alert("Please enter a valid number of hours.");
+        return;
+      }
+      visit.hours = hours;
+      saveVisits();
+      updateHoursBanner();
+      onChange();
+    };
+  }
+
+  row.querySelector(".btn-delete-visit").onclick = () => {
+    state.visits = state.visits.filter((v) => v.id !== visit.id);
+    saveVisits();
+    updateHoursBanner();
+    onChange();
+  };
+
+  return row;
 }
 
 function showToast(msg) {
@@ -227,6 +327,8 @@ function initLockScreen() {
 function unlockApp() {
   loadHouses();
   loadVisits();
+  loadEmployees();
+  renderEmployeeDatalist();
   renderHomeList();
   updateHoursBanner();
   showScreen("screen-home");
@@ -237,8 +339,10 @@ function unlockApp() {
 document.addEventListener("click", (e) => {
   const backBtn = e.target.closest(".btn-back");
   if (backBtn) {
-    showScreen(backBtn.dataset.backTo);
-    if (backBtn.dataset.backTo === "screen-home") renderHomeList();
+    const target = backBtn.dataset.backTo;
+    showScreen(target);
+    if (target === "screen-home") renderHomeList();
+    if (target === "screen-calendar") renderCalendarScreen();
   }
 });
 
@@ -338,11 +442,20 @@ function renderCalendarScreen() {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${monthPrefix}-${pad2(day)}`;
     const dayVisits = monthVisits.filter((v) => v.date === dateStr);
+    const hasPending = dayVisits.some(isPendingVisit);
+    const hasCompleted = dayVisits.some((v) => !isPendingVisit(v));
     const cell = document.createElement("div");
     cell.className = "calendar-day"
       + (dateStr === todayStr ? " today" : "")
       + (dayVisits.length ? " has-visits" : "");
-    cell.innerHTML = `<span>${day}</span>` + (dayVisits.length ? `<span class="day-dot"></span>` : "");
+    let dotsHtml = "";
+    if (dayVisits.length) {
+      dotsHtml = `<span class="day-dots">`
+        + (hasPending ? `<span class="day-dot pending"></span>` : "")
+        + (hasCompleted ? `<span class="day-dot completed"></span>` : "")
+        + `</span>`;
+    }
+    cell.innerHTML = `<span>${day}</span>${dotsHtml}`;
     grid.appendChild(cell);
   }
 
@@ -352,18 +465,46 @@ function renderCalendarScreen() {
   const sorted = [...monthVisits].sort((a, b) => b.date.localeCompare(a.date));
   empty.hidden = sorted.length > 0;
   sorted.forEach((v) => {
-    const house = getHouse(v.houseId);
-    const row = document.createElement("div");
-    row.className = "item-row";
-    row.innerHTML = `
-      <div class="item-main">
-        <div class="item-title">${escapeHtml(house ? house.name : "Deleted house")}</div>
-        <div class="item-value">${formatDateDisplay(v.date)} · ${formatHours(v.hours)}${v.note ? " · " + escapeHtml(v.note) : ""}</div>
-      </div>
-    `;
-    list.appendChild(row);
+    list.appendChild(createVisitRowElement(v, { showHouse: true, onChange: renderCalendarScreen }));
   });
 }
+
+document.getElementById("btn-schedule-visit").onclick = () => {
+  if (!state.houses.length) {
+    showToast("Add a house first, then you can schedule a cleaning.");
+    return;
+  }
+  const select = document.getElementById("input-schedule-house");
+  select.innerHTML = "";
+  state.houses.forEach((h) => {
+    const option = document.createElement("option");
+    option.value = h.id;
+    option.textContent = h.name;
+    select.appendChild(option);
+  });
+  document.getElementById("input-schedule-date").value = toDateStr(new Date());
+  document.getElementById("input-schedule-employee").value = "";
+  document.getElementById("input-schedule-note").value = "";
+  renderEmployeeDatalist();
+  showScreen("screen-schedule-visit");
+};
+
+document.getElementById("schedule-visit-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const houseId = document.getElementById("input-schedule-house").value;
+  const date = document.getElementById("input-schedule-date").value;
+  const employeeName = document.getElementById("input-schedule-employee").value.trim();
+  const note = document.getElementById("input-schedule-note").value.trim();
+  if (!houseId || !date || !employeeName) return;
+
+  addEmployeeIfNew(employeeName);
+  state.visits.push({ id: uuid(), houseId, date, employeeName, hours: null, note });
+  saveVisits();
+  updateHoursBanner();
+  renderCalendarScreen();
+  showScreen("screen-calendar");
+  showToast("Cleaning scheduled!");
+});
 
 /* ---------- House form: add / edit ---------- */
 
@@ -445,6 +586,9 @@ function openHouseDetail(id) {
   renderPhotos(h);
   renderVisits(h);
   document.getElementById("input-visit-date").value = toDateStr(new Date());
+  document.getElementById("input-visit-employee").value = "";
+  document.getElementById("input-visit-hours").value = "";
+  document.getElementById("input-visit-note").value = "";
 
   showScreen("screen-house-detail");
 }
@@ -495,22 +639,7 @@ function renderVisits(house) {
     .sort((a, b) => b.date.localeCompare(a.date));
   empty.hidden = visits.length > 0;
   visits.forEach((v) => {
-    const row = document.createElement("div");
-    row.className = "item-row";
-    row.innerHTML = `
-      <div class="item-main">
-        <div class="item-title">${formatDateDisplay(v.date)}</div>
-        <div class="item-value">${formatHours(v.hours)}${v.note ? " · " + escapeHtml(v.note) : ""}</div>
-      </div>
-      <button class="btn-delete-visit" title="Delete">🗑️</button>
-    `;
-    row.querySelector(".btn-delete-visit").onclick = () => {
-      state.visits = state.visits.filter((x) => x.id !== v.id);
-      saveVisits();
-      renderVisits(house);
-      updateHoursBanner();
-    };
-    list.appendChild(row);
+    list.appendChild(createVisitRowElement(v, { showHouse: false, onChange: () => renderVisits(house) }));
   });
 }
 
@@ -519,20 +648,27 @@ document.getElementById("visit-form").addEventListener("submit", (e) => {
   const h = getHouse(state.currentHouseId);
   if (!h) return;
   const dateInput = document.getElementById("input-visit-date");
+  const employeeInput = document.getElementById("input-visit-employee");
   const hoursInput = document.getElementById("input-visit-hours");
   const noteInput = document.getElementById("input-visit-note");
   const date = dateInput.value;
-  const hours = parseFloat(hoursInput.value);
+  const employeeName = employeeInput.value.trim();
+  const hoursRaw = hoursInput.value.trim();
+  const hours = hoursRaw === "" ? null : parseFloat(hoursRaw);
   const note = noteInput.value.trim();
-  if (!date || !hours || hours <= 0) return;
+  if (!date || !employeeName) return;
+  if (hoursRaw !== "" && (isNaN(hours) || hours <= 0)) return;
 
-  state.visits.push({ id: uuid(), houseId: h.id, date, hours, note });
+  addEmployeeIfNew(employeeName);
+  state.visits.push({ id: uuid(), houseId: h.id, date, employeeName, hours, note });
   saveVisits();
   dateInput.value = toDateStr(new Date());
+  employeeInput.value = "";
   hoursInput.value = "";
   noteInput.value = "";
   renderVisits(h);
   updateHoursBanner();
+  showToast(hours === null ? "Cleaning scheduled!" : "Visit logged!");
 });
 
 /* ---------- Share as PDF ---------- */
@@ -779,6 +915,46 @@ document.getElementById("photo-viewer-close").onclick = () => {
   document.getElementById("photo-viewer").hidden = true;
 };
 
+/* ---------- Employees ---------- */
+
+document.getElementById("btn-manage-employees").onclick = () => {
+  renderEmployeesList();
+  showScreen("screen-employees");
+};
+
+function renderEmployeesList() {
+  const list = document.getElementById("employees-list");
+  const empty = document.getElementById("employees-empty");
+  list.innerHTML = "";
+  const sorted = [...state.employees].sort((a, b) => a.name.localeCompare(b.name));
+  empty.hidden = sorted.length > 0;
+  sorted.forEach((emp) => {
+    const row = document.createElement("div");
+    row.className = "item-row";
+    row.innerHTML = `
+      <div class="item-main"><div class="item-title">${escapeHtml(emp.name)}</div></div>
+      <button class="btn-delete-employee" title="Delete">🗑️</button>
+    `;
+    row.querySelector(".btn-delete-employee").onclick = () => {
+      state.employees = state.employees.filter((e) => e.id !== emp.id);
+      saveEmployees();
+      renderEmployeeDatalist();
+      renderEmployeesList();
+    };
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("employee-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("input-employee-name");
+  const name = input.value.trim();
+  if (!name) return;
+  addEmployeeIfNew(name);
+  input.value = "";
+  renderEmployeesList();
+});
+
 /* ---------- Settings ---------- */
 
 document.getElementById("btn-change-pin").onclick = () => {
@@ -789,7 +965,7 @@ document.getElementById("btn-change-pin").onclick = () => {
 };
 
 document.getElementById("btn-export").onclick = () => {
-  const data = JSON.stringify({ houses: state.houses, visits: state.visits }, null, 2);
+  const data = JSON.stringify({ houses: state.houses, visits: state.visits, employees: state.employees }, null, 2);
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -809,25 +985,30 @@ document.getElementById("input-import").addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const imported = JSON.parse(reader.result);
-      // Older backups were a bare array of houses (no visits included).
+      // Older backups were a bare array of houses (no visits/employees included).
       const importedHouses = Array.isArray(imported) ? imported : imported.houses;
       const importedVisits = Array.isArray(imported) ? [] : (imported.visits || []);
+      const importedEmployees = Array.isArray(imported) ? [] : (imported.employees || []);
       if (!Array.isArray(importedHouses)) throw new Error("Invalid format");
       const merge = confirm(
-        "MERGE this backup with your current houses?\n\nOK = merge (adds the houses/visits from the backup)\nCancel = REPLACE everything with the backup"
+        "MERGE this backup with your current houses?\n\nOK = merge (adds the houses/visits/employees from the backup)\nCancel = REPLACE everything with the backup"
       );
       if (merge) {
         state.houses = state.houses.concat(importedHouses);
         state.visits = state.visits.concat(importedVisits);
+        importedEmployees.forEach((emp) => addEmployeeIfNew(emp.name));
       } else {
         state.houses = importedHouses;
         state.visits = importedVisits;
+        state.employees = importedEmployees;
+        saveEmployees();
       }
       saveHouses();
       saveVisits();
       renderHomeList();
       renderStorageInfo();
       updateHoursBanner();
+      renderEmployeeDatalist();
       showToast("Backup imported successfully!");
     } catch (err) {
       alert("Couldn't read this backup file.");
@@ -838,9 +1019,10 @@ document.getElementById("input-import").addEventListener("change", (e) => {
 });
 
 document.getElementById("btn-reset-all").onclick = () => {
-  if (confirm("This will erase ALL houses, codes, photos, visits and the PIN. This can't be undone. Continue?")) {
+  if (confirm("This will erase ALL houses, codes, photos, visits, employees and the PIN. This can't be undone. Continue?")) {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(VISITS_KEY);
+    localStorage.removeItem(EMPLOYEES_KEY);
     localStorage.removeItem(PIN_KEY);
     location.reload();
   }
