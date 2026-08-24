@@ -137,15 +137,16 @@
   </div>
 
   <div id="tab-visits" class="tab-content">
-    <p class="hint-text">Log each cleaning visit here to keep track of hours worked for pay.</p>
+    <p class="hint-text">Schedule who's cleaning and when. Leave hours blank to schedule it for later — mark it complete once she's done, to log hours for pay.</p>
     <form id="visit-form" class="inline-form">
       <input id="input-visit-date" type="date" required>
-      <input id="input-visit-hours" type="number" step="0.25" min="0" placeholder="Hours worked (ex: 2.5)" required>
+      <input id="input-visit-employee" type="text" list="employees-datalist" placeholder="Employee name" required>
+      <input id="input-visit-hours" type="number" step="0.25" min="0" placeholder="Hours worked (leave blank to schedule)">
       <input id="input-visit-note" type="text" placeholder="Note (optional)">
-      <button type="submit" class="btn btn-primary">Log Visit</button>
+      <button type="submit" class="btn btn-primary">Save</button>
     </form>
     <div id="visits-list" class="item-list"></div>
-    <p id="visits-empty" class="empty-state" hidden>No visits logged yet for this house.</p>
+    <p id="visits-empty" class="empty-state" hidden>No visits scheduled or logged yet for this house.</p>
   </div>
 
   <div id="tab-photos" class="tab-content">
@@ -185,11 +186,40 @@
     <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
   </div>
   <div id="calendar-grid" class="calendar-grid"></div>
+  <p class="calendar-legend"><span class="day-dot pending"></span> Scheduled &nbsp; <span class="day-dot completed"></span> Completed</p>
 
   <h3 class="section-heading">Visits this month</h3>
   <div id="calendar-visits-list" class="item-list"></div>
-  <p id="calendar-visits-empty" class="empty-state" hidden>No visits logged this month.</p>
+  <p id="calendar-visits-empty" class="empty-state" hidden>No visits scheduled or logged this month.</p>
+
+  <button id="btn-schedule-visit" class="fab" title="Schedule a cleaning">+</button>
 </section>
+
+<!-- SCHEDULE A CLEANING -->
+<section id="screen-schedule-visit" class="screen">
+  <header class="topbar">
+    <button class="icon-btn btn-back" data-back-to="screen-calendar">←</button>
+    <h1>Schedule Cleaning</h1>
+  </header>
+
+  <form id="schedule-visit-form" class="form">
+    <label>House
+      <select id="input-schedule-house" required></select>
+    </label>
+    <label>Date
+      <input id="input-schedule-date" type="date" required>
+    </label>
+    <label>Employee
+      <input id="input-schedule-employee" type="text" list="employees-datalist" placeholder="Employee name" required>
+    </label>
+    <label>Note
+      <input id="input-schedule-note" type="text" placeholder="Optional">
+    </label>
+    <button type="submit" class="btn btn-primary">Schedule</button>
+  </form>
+</section>
+
+<datalist id="employees-datalist"></datalist>
 
 <!-- SETTINGS -->
 <section id="screen-settings" class="screen">
@@ -199,6 +229,7 @@
   </header>
 
   <div class="form">
+    <button id="btn-manage-employees" class="btn btn-secondary">👥 Manage Employees</button>
     <button id="btn-change-pin" class="btn btn-secondary">Change PIN</button>
     <button id="btn-export" class="btn btn-secondary">⬇️ Export backup (JSON)</button>
 
@@ -211,6 +242,21 @@
 
     <button id="btn-reset-all" class="btn btn-danger">Erase all data</button>
   </div>
+</section>
+
+<!-- EMPLOYEES -->
+<section id="screen-employees" class="screen">
+  <header class="topbar">
+    <button class="icon-btn btn-back" data-back-to="screen-settings">←</button>
+    <h1>Employees</h1>
+  </header>
+
+  <form id="employee-form" class="inline-form" style="padding: 16px 16px 0;">
+    <input id="input-employee-name" type="text" placeholder="Employee name" required>
+    <button type="submit" class="btn btn-primary">Add</button>
+  </form>
+  <div id="employees-list" class="item-list" style="padding: 16px;"></div>
+  <p id="employees-empty" class="empty-state" hidden>No employees added yet — they're added automatically the first time you schedule or log a visit for them.</p>
 </section>
 
 <div id="photo-viewer" class="photo-viewer" hidden>
