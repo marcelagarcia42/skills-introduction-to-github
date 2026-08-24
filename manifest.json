@@ -1,6 +1,6 @@
 {
-  "name": "Organizador de Faxinas",
-  "short_name": "Faxinas",
+  "name": "Cleaning Organizer",
+  "short_name": "Cleaning",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

@@ -329,3 +329,32 @@ h1 { font-size: 1.25rem; margin: 0; }
 }
 
 .storage-info { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 16px 0; }
+
+/* --- Print view (used for "Share as PDF") --- */
+.print-house { display: none; }
+
+@media print {
+  body { background: #fff; }
+  body > *:not(.print-house) { display: none !important; }
+  .print-house {
+    display: block;
+    max-width: 100%;
+    padding: 24px;
+    background: #fff;
+    color: #000;
+  }
+  .print-house h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .print-house h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #444;
+    margin: 20px 0 6px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+  }
+  .print-house p { margin: 0 0 8px; white-space: pre-wrap; }
+  .print-house ul { margin: 0; padding-left: 20px; }
+  .print-house li { margin-bottom: 6px; }
+  .print-footer { margin-top: 32px; font-size: 0.75rem; color: #888; }
+}

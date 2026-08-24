@@ -2,6 +2,8 @@
 
 Aplicativo web simples para organizar as casas atendidas por um serviço de limpeza (cleaning) nos EUA. Feito para uso pela própria faxineira/cliente, direto do celular ou computador — **sem precisar de internet, servidor ou instalação**.
 
+A interface do app é em **inglês** (para funcionárias e clientes nos EUA). Este README fica em português para facilitar o uso.
+
 ## O que o app faz
 
 Para cada casa você pode cadastrar:
@@ -18,6 +20,17 @@ Outros recursos:
 - 🔎 Busca rápida por nome ou endereço da casa
 - 💾 **Exportar / importar backup** em JSON (Configurações ⚙️) — importante porque os dados ficam salvos apenas neste aparelho/navegador
 - 📱 Layout pensado para celular, mas funciona em qualquer navegador
+
+## Como compartilhar uma casa com a funcionária
+
+O app continua sendo só para o celular da dona do negócio (não há login nem nuvem). Para passar as informações de uma casa para quem vai fazer a faxina:
+
+1. Abra a casa desejada → aba **Info**
+2. Toque em **"📄 Share as PDF"**
+3. Escolha **"Save as PDF"** (ou similar) na tela de impressão do celular/computador
+4. Envie esse PDF pela funcionária por WhatsApp, e-mail etc.
+
+O PDF traz endereço, observações, senhas das portas e o checklist de faxina daquela casa. Como é um arquivo estático, se a senha da porta mudar depois, é preciso gerar e enviar um novo PDF.
 
 ## Como usar
 

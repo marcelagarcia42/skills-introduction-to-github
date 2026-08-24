@@ -1,10 +1,10 @@
 "use strict";
 
-/* ---------- Constantes / armazenamento ---------- */
+/* ---------- Constants / storage ---------- */
 
 const STORAGE_KEY = "cleaningOrganizer.houses";
 const PIN_KEY = "cleaningOrganizer.pin";
-const MAX_PHOTO_DIMENSION = 1000; // px - fotos são redimensionadas antes de salvar
+const MAX_PHOTO_DIMENSION = 1000; // px - photos are resized before saving
 const PHOTO_QUALITY = 0.7;
 
 let state = {
@@ -14,7 +14,7 @@ let state = {
   revealedCodes: new Set(),
 };
 
-/* ---------- Utilidades ---------- */
+/* ---------- Utilities ---------- */
 
 function uuid() {
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
@@ -34,7 +34,7 @@ function saveHouses() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.houses));
     return true;
   } catch (e) {
-    showToast("Armazenamento cheio! Apague fotos antigas para liberar espaço.");
+    showToast("Storage is full! Delete old photos to free up space.");
     return false;
   }
 }
@@ -62,7 +62,7 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-/* ---------- PIN / Bloqueio ---------- */
+/* ---------- PIN / Lock screen ---------- */
 
 function initLockScreen() {
   const savedPin = localStorage.getItem(PIN_KEY);
@@ -73,8 +73,8 @@ function initLockScreen() {
 
   let mode = savedPin ? "unlock" : "create";
   instructions.textContent = mode === "create"
-    ? "Crie um PIN para proteger suas senhas (4 a 8 dígitos)"
-    : "Digite seu PIN para entrar";
+    ? "Create a PIN to protect your passwords (4 to 8 digits)"
+    : "Enter your PIN to continue";
   forgotBtn.hidden = mode === "create";
 
   let pendingFirstPin = null;
@@ -85,20 +85,20 @@ function initLockScreen() {
 
     if (mode === "create") {
       if (value.length < 4) {
-        errorEl.textContent = "O PIN deve ter pelo menos 4 dígitos.";
+        errorEl.textContent = "PIN must be at least 4 digits.";
         return;
       }
       if (!pendingFirstPin) {
         pendingFirstPin = value;
         input.value = "";
-        instructions.textContent = "Digite o PIN novamente para confirmar";
+        instructions.textContent = "Enter the PIN again to confirm";
         return;
       }
       if (pendingFirstPin !== value) {
-        errorEl.textContent = "Os PINs não coincidem. Tente de novo.";
+        errorEl.textContent = "PINs don't match. Try again.";
         pendingFirstPin = null;
         input.value = "";
-        instructions.textContent = "Crie um PIN para proteger suas senhas (4 a 8 dígitos)";
+        instructions.textContent = "Create a PIN to protect your passwords (4 to 8 digits)";
         return;
       }
       localStorage.setItem(PIN_KEY, value);
@@ -110,7 +110,7 @@ function initLockScreen() {
     if (value === savedPin) {
       unlockApp();
     } else {
-      errorEl.textContent = "PIN incorreto.";
+      errorEl.textContent = "Incorrect PIN.";
       input.value = "";
     }
   }
@@ -119,7 +119,7 @@ function initLockScreen() {
   input.onkeydown = (e) => { if (e.key === "Enter") attempt(); };
 
   forgotBtn.onclick = () => {
-    if (confirm("Isso vai apagar o PIN atual (seus dados de casas continuam salvos). Deseja continuar?")) {
+    if (confirm("This will erase the current PIN (your house data stays saved). Continue?")) {
       localStorage.removeItem(PIN_KEY);
       initLockScreen();
     }
@@ -135,7 +135,7 @@ function unlockApp() {
   showScreen("screen-home");
 }
 
-/* ---------- Navegação genérica ---------- */
+/* ---------- Generic navigation ---------- */
 
 document.addEventListener("click", (e) => {
   const backBtn = e.target.closest(".btn-back");
@@ -145,7 +145,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-/* ---------- Tela inicial: lista de casas ---------- */
+/* ---------- Home screen: house list ---------- */
 
 function renderHomeList(filterText) {
   const list = document.getElementById("house-list");
@@ -170,7 +170,7 @@ function renderHomeList(filterText) {
       ${thumb}
       <div class="house-info">
         <p class="house-name">${escapeHtml(h.name)}</p>
-        <p class="house-address">${escapeHtml(h.address || "Sem endereço")}</p>
+        <p class="house-address">${escapeHtml(h.address || "No address")}</p>
       </div>
     `;
     card.onclick = () => openHouseDetail(h.id);
@@ -185,13 +185,13 @@ document.getElementById("btn-settings").onclick = () => {
   showScreen("screen-settings");
 };
 
-/* ---------- Formulário: adicionar / editar casa ---------- */
+/* ---------- House form: add / edit ---------- */
 
 let editingHouseId = null;
 
 document.getElementById("btn-add-house").onclick = () => {
   editingHouseId = null;
-  document.getElementById("house-form-title").textContent = "Nova Casa";
+  document.getElementById("house-form-title").textContent = "New House";
   document.getElementById("input-name").value = "";
   document.getElementById("input-address").value = "";
   document.getElementById("input-notes").value = "";
@@ -202,7 +202,7 @@ document.getElementById("btn-edit-house").onclick = () => {
   const h = getHouse(state.currentHouseId);
   if (!h) return;
   editingHouseId = h.id;
-  document.getElementById("house-form-title").textContent = "Editar Casa";
+  document.getElementById("house-form-title").textContent = "Edit House";
   document.getElementById("input-name").value = h.name;
   document.getElementById("input-address").value = h.address || "";
   document.getElementById("input-notes").value = h.notes || "";
@@ -240,7 +240,7 @@ document.getElementById("house-form").addEventListener("submit", (e) => {
   }
 });
 
-/* ---------- Detalhe da casa ---------- */
+/* ---------- House detail ---------- */
 
 function openHouseDetail(id) {
   state.currentHouseId = id;
@@ -248,8 +248,8 @@ function openHouseDetail(id) {
   if (!h) return;
 
   document.getElementById("detail-name").textContent = h.name;
-  document.getElementById("detail-address").textContent = h.address || "Sem endereço cadastrado";
-  document.getElementById("detail-notes").textContent = h.notes || "Sem observações";
+  document.getElementById("detail-address").textContent = h.address || "No address on file";
+  document.getElementById("detail-notes").textContent = h.notes || "No notes";
 
   const mapLink = document.getElementById("detail-map-link");
   if (h.address) {
@@ -280,7 +280,7 @@ function switchTab(tabId) {
 document.getElementById("btn-delete-house").onclick = () => {
   const h = getHouse(state.currentHouseId);
   if (!h) return;
-  if (confirm(`Excluir "${h.name}"? Isso vai apagar endereço, senhas, faxina e fotos dessa casa.`)) {
+  if (confirm(`Delete "${h.name}"? This will erase its address, codes, checklist and photos.`)) {
     state.houses = state.houses.filter((x) => x.id !== h.id);
     saveHouses();
     renderHomeList();
@@ -288,7 +288,55 @@ document.getElementById("btn-delete-house").onclick = () => {
   }
 };
 
-/* ---------- Senhas das portas ---------- */
+/* ---------- Share as PDF ---------- */
+
+document.getElementById("btn-share-pdf").onclick = () => {
+  const h = getHouse(state.currentHouseId);
+  if (!h) return;
+
+  document.getElementById("print-name").textContent = h.name;
+  document.getElementById("print-address").textContent = h.address || "No address on file";
+
+  const notesSection = document.getElementById("print-notes-section");
+  if (h.notes) {
+    notesSection.hidden = false;
+    document.getElementById("print-notes").textContent = h.notes;
+  } else {
+    notesSection.hidden = true;
+  }
+
+  const codesSection = document.getElementById("print-codes-section");
+  const codesList = document.getElementById("print-codes-list");
+  codesList.innerHTML = "";
+  if (h.doorCodes && h.doorCodes.length) {
+    codesSection.hidden = false;
+    h.doorCodes.forEach((code) => {
+      const li = document.createElement("li");
+      li.textContent = `${code.label}: ${code.value}`;
+      codesList.appendChild(li);
+    });
+  } else {
+    codesSection.hidden = true;
+  }
+
+  const checklistSection = document.getElementById("print-checklist-section");
+  const checklistList = document.getElementById("print-checklist-list");
+  checklistList.innerHTML = "";
+  if (h.checklist && h.checklist.length) {
+    checklistSection.hidden = false;
+    h.checklist.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = `☐ ${item.text}`;
+      checklistList.appendChild(li);
+    });
+  } else {
+    checklistSection.hidden = true;
+  }
+
+  window.print();
+};
+
+/* ---------- Door codes ---------- */
 
 function renderDoorCodes(house) {
   const list = document.getElementById("door-codes-list");
@@ -302,8 +350,8 @@ function renderDoorCodes(house) {
         <div class="item-title">${escapeHtml(code.label)}</div>
         <div class="item-value ${revealed ? "" : "hidden-value"}">${revealed ? escapeHtml(code.value) : "••••••"}</div>
       </div>
-      <button class="btn-reveal" title="Mostrar/ocultar">${revealed ? "🙈" : "👁️"}</button>
-      <button class="btn-delete-code" title="Excluir">🗑️</button>
+      <button class="btn-reveal" title="Show/hide">${revealed ? "🙈" : "👁️"}</button>
+      <button class="btn-delete-code" title="Delete">🗑️</button>
     `;
     row.querySelector(".btn-reveal").onclick = () => {
       if (revealed) state.revealedCodes.delete(code.id);
@@ -336,7 +384,7 @@ document.getElementById("door-code-form").addEventListener("submit", (e) => {
   renderDoorCodes(h);
 });
 
-/* ---------- Checklist / processo de faxina ---------- */
+/* ---------- Checklist / cleaning process ---------- */
 
 function renderChecklist(house) {
   const list = document.getElementById("checklist-list");
@@ -349,7 +397,7 @@ function renderChecklist(house) {
       <div class="item-main">
         <div class="item-title">${escapeHtml(item.text)}</div>
       </div>
-      <button class="btn-delete-item" title="Excluir">🗑️</button>
+      <button class="btn-delete-item" title="Delete">🗑️</button>
     `;
     row.querySelector('input[type="checkbox"]').onchange = (e) => {
       item.done = e.target.checked;
@@ -385,10 +433,10 @@ document.getElementById("btn-reset-checklist").onclick = () => {
   (h.checklist || []).forEach((item) => { item.done = false; });
   saveHouses();
   renderChecklist(h);
-  showToast("Lista reiniciada para a próxima faxina!");
+  showToast("Checklist reset for the next cleaning!");
 };
 
-/* ---------- Fotos ---------- */
+/* ---------- Photos ---------- */
 
 function renderPhotos(house) {
   const grid = document.getElementById("photos-grid");
@@ -440,7 +488,7 @@ document.getElementById("input-photo").addEventListener("change", async (e) => {
       const dataUrl = await resizeImage(file);
       h.photos.push({ id: uuid(), dataUrl });
     } catch (err) {
-      showToast("Não foi possível processar uma das fotos.");
+      showToast("Couldn't process one of the photos.");
     }
   }
   const ok = saveHouses();
@@ -448,7 +496,7 @@ document.getElementById("input-photo").addEventListener("change", async (e) => {
   renderHomeList();
   e.target.value = "";
   if (!ok) {
-    // Se falhou ao salvar (estouro de cota), desfaz a última adição em memória.
+    // If saving failed (storage quota exceeded), undo the last addition in memory.
     loadHouses();
   }
 });
@@ -472,10 +520,10 @@ document.getElementById("photo-viewer-close").onclick = () => {
   document.getElementById("photo-viewer").hidden = true;
 };
 
-/* ---------- Configurações ---------- */
+/* ---------- Settings ---------- */
 
 document.getElementById("btn-change-pin").onclick = () => {
-  if (confirm("Deseja apagar o PIN atual e criar um novo agora?")) {
+  if (confirm("Erase the current PIN and create a new one now?")) {
     localStorage.removeItem(PIN_KEY);
     initLockScreen();
   }
@@ -488,7 +536,7 @@ document.getElementById("btn-export").onclick = () => {
   const a = document.createElement("a");
   const date = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `backup-faxinas-${date}.json`;
+  a.download = `cleaning-backup-${date}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -502,9 +550,9 @@ document.getElementById("input-import").addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const imported = JSON.parse(reader.result);
-      if (!Array.isArray(imported)) throw new Error("Formato inválido");
+      if (!Array.isArray(imported)) throw new Error("Invalid format");
       const merge = confirm(
-        "Deseja MESCLAR este backup com as casas atuais?\n\nOK = mesclar (adiciona as casas do backup)\nCancelar = SUBSTITUIR tudo pelo backup"
+        "MERGE this backup with your current houses?\n\nOK = merge (adds the houses from the backup)\nCancel = REPLACE everything with the backup"
       );
       if (merge) {
         state.houses = state.houses.concat(imported);
@@ -514,9 +562,9 @@ document.getElementById("input-import").addEventListener("change", (e) => {
       saveHouses();
       renderHomeList();
       renderStorageInfo();
-      showToast("Backup importado com sucesso!");
+      showToast("Backup imported successfully!");
     } catch (err) {
-      alert("Não foi possível ler este arquivo de backup.");
+      alert("Couldn't read this backup file.");
     }
   };
   reader.readAsText(file);
@@ -524,7 +572,7 @@ document.getElementById("input-import").addEventListener("change", (e) => {
 });
 
 document.getElementById("btn-reset-all").onclick = () => {
-  if (confirm("Isso vai apagar TODAS as casas, senhas, fotos e o PIN. Essa ação não pode ser desfeita. Continuar?")) {
+  if (confirm("This will erase ALL houses, codes, photos and the PIN. This can't be undone. Continue?")) {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PIN_KEY);
     location.reload();
@@ -536,12 +584,12 @@ function renderStorageInfo() {
     const raw = localStorage.getItem(STORAGE_KEY) || "";
     const kb = Math.round((raw.length * 2) / 1024);
     document.getElementById("storage-info").textContent =
-      `Uso de armazenamento neste aparelho: ~${kb} KB · ${state.houses.length} casa(s) cadastrada(s)`;
+      `Storage used on this device: ~${kb} KB · ${state.houses.length} house(s) saved`;
   } catch (e) {
     document.getElementById("storage-info").textContent = "";
   }
 }
 
-/* ---------- Inicialização ---------- */
+/* ---------- Initialization ---------- */
 
 initLockScreen();
