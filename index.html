@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Organizador de Faxinas</title>
+<title>Cleaning Organizer</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
@@ -11,153 +11,176 @@
 <meta name="theme-color" content="#2f9e6e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Faxinas">
+<meta name="apple-mobile-web-app-title" content="Cleaning">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<!-- TELA DE BLOQUEIO (PIN) -->
+<!-- LOCK SCREEN (PIN) -->
 <section id="screen-lock" class="screen">
   <div class="lock-box">
     <div class="app-logo">🧹</div>
-    <h1>Organizador de Faxinas</h1>
-    <p id="lock-instructions">Digite seu PIN para entrar</p>
+    <h1>Cleaning Organizer</h1>
+    <p id="lock-instructions">Enter your PIN to continue</p>
     <input id="lock-input" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
-    <button id="lock-submit" class="btn btn-primary">Entrar</button>
+    <button id="lock-submit" class="btn btn-primary">Enter</button>
     <p id="lock-error" class="error-text"></p>
-    <button id="lock-forgot" class="btn-link">Esqueci meu PIN</button>
+    <button id="lock-forgot" class="btn-link">Forgot my PIN</button>
   </div>
 </section>
 
-<!-- TELA PRINCIPAL: LISTA DE CASAS -->
+<!-- HOME: HOUSE LIST -->
 <section id="screen-home" class="screen">
   <header class="topbar">
-    <h1>🧹 Minhas Casas</h1>
-    <button id="btn-settings" class="icon-btn" title="Configurações">⚙️</button>
+    <h1>🧹 My Houses</h1>
+    <button id="btn-settings" class="icon-btn" title="Settings">⚙️</button>
   </header>
 
   <div class="search-bar">
-    <input id="search-input" type="text" placeholder="Buscar casa ou endereço...">
+    <input id="search-input" type="text" placeholder="Search house or address...">
   </div>
 
   <div id="house-list" class="house-list"></div>
 
   <p id="empty-state" class="empty-state" hidden>
-    Nenhuma casa cadastrada ainda.<br>
-    Toque no botão <strong>+</strong> para adicionar a primeira casa.
+    No houses yet.<br>
+    Tap the <strong>+</strong> button to add your first house.
   </p>
 
-  <button id="btn-add-house" class="fab" title="Adicionar casa">+</button>
+  <button id="btn-add-house" class="fab" title="Add house">+</button>
 </section>
 
-<!-- FORMULARIO: ADICIONAR / EDITAR CASA -->
+<!-- HOUSE FORM: ADD / EDIT -->
 <section id="screen-house-form" class="screen">
   <header class="topbar">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
-    <h1 id="house-form-title">Nova Casa</h1>
+    <h1 id="house-form-title">New House</h1>
   </header>
 
   <form id="house-form" class="form">
-    <label>Nome / Apelido da casa
-      <input id="input-name" type="text" placeholder="Ex: Casa da Sra. Smith" required>
+    <label>House name / nickname
+      <input id="input-name" type="text" placeholder="Ex: Mrs. Smith's house" required>
     </label>
-    <label>Endereço
-      <textarea id="input-address" rows="2" placeholder="Rua, número, cidade, estado, CEP"></textarea>
+    <label>Address
+      <textarea id="input-address" rows="2" placeholder="Street, number, city, state, ZIP"></textarea>
     </label>
-    <label>Observações
-      <textarea id="input-notes" rows="3" placeholder="Ex: tem cachorro, dia de coleta de lixo, alarme..."></textarea>
+    <label>Notes
+      <textarea id="input-notes" rows="3" placeholder="Ex: has a dog, trash day, alarm..."></textarea>
     </label>
-    <button type="submit" class="btn btn-primary">Salvar</button>
+    <button type="submit" class="btn btn-primary">Save</button>
   </form>
 </section>
 
-<!-- DETALHE DA CASA -->
+<!-- HOUSE DETAIL -->
 <section id="screen-house-detail" class="screen">
   <header class="topbar">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
-    <h1 id="detail-name">Casa</h1>
-    <button id="btn-edit-house" class="icon-btn" title="Editar">✏️</button>
+    <h1 id="detail-name">House</h1>
+    <button id="btn-edit-house" class="icon-btn" title="Edit">✏️</button>
   </header>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="tab-info">Info</button>
-    <button class="tab-btn" data-tab="tab-codes">Senhas</button>
-    <button class="tab-btn" data-tab="tab-checklist">Faxina</button>
-    <button class="tab-btn" data-tab="tab-photos">Fotos</button>
+    <button class="tab-btn" data-tab="tab-codes">Codes</button>
+    <button class="tab-btn" data-tab="tab-checklist">Cleaning</button>
+    <button class="tab-btn" data-tab="tab-photos">Photos</button>
   </div>
 
   <div id="tab-info" class="tab-content active">
     <div class="card">
-      <p class="label">Endereço</p>
+      <p class="label">Address</p>
       <p id="detail-address" class="value"></p>
-      <a id="detail-map-link" class="btn-link" target="_blank" rel="noopener">📍 Abrir no mapa</a>
+      <a id="detail-map-link" class="btn-link" target="_blank" rel="noopener">📍 Open in Maps</a>
     </div>
     <div class="card">
-      <p class="label">Observações</p>
+      <p class="label">Notes</p>
       <p id="detail-notes" class="value"></p>
     </div>
-    <button id="btn-delete-house" class="btn btn-danger">Excluir esta casa</button>
+    <button id="btn-share-pdf" class="btn btn-secondary">📄 Share as PDF</button>
+    <button id="btn-delete-house" class="btn btn-danger">Delete this house</button>
   </div>
 
   <div id="tab-codes" class="tab-content">
-    <p class="warning-text">⚠️ As senhas ficam salvas somente neste aparelho. Cuidado com quem tem acesso ao celular.</p>
+    <p class="warning-text">⚠️ This information is saved only on this device. Be careful who has access to this phone.</p>
     <div id="door-codes-list" class="item-list"></div>
     <form id="door-code-form" class="inline-form">
-      <input id="input-code-label" type="text" placeholder="Local (ex: Porta da frente)" required>
-      <input id="input-code-value" type="text" placeholder="Senha / código" required>
-      <button type="submit" class="btn btn-primary">Adicionar</button>
+      <input id="input-code-label" type="text" placeholder="Location (ex: Front door)" required>
+      <input id="input-code-value" type="text" placeholder="Password / code" required>
+      <button type="submit" class="btn btn-primary">Add</button>
     </form>
   </div>
 
   <div id="tab-checklist" class="tab-content">
     <div class="checklist-header">
-      <button id="btn-reset-checklist" class="btn-link">🔄 Reiniciar (nova faxina)</button>
+      <button id="btn-reset-checklist" class="btn-link">🔄 Reset (new cleaning)</button>
     </div>
     <div id="checklist-list" class="item-list"></div>
     <form id="checklist-form" class="inline-form">
-      <input id="input-checklist-text" type="text" placeholder="Ex: Limpar banheiro" required>
-      <button type="submit" class="btn btn-primary">Adicionar</button>
+      <input id="input-checklist-text" type="text" placeholder="Ex: Clean bathroom" required>
+      <button type="submit" class="btn btn-primary">Add</button>
     </form>
   </div>
 
   <div id="tab-photos" class="tab-content">
     <label class="btn btn-primary photo-upload-label">
-      📷 Adicionar foto
+      📷 Add photo
       <input id="input-photo" type="file" accept="image/*" multiple hidden>
     </label>
     <div id="photos-grid" class="photos-grid"></div>
   </div>
 </section>
 
-<!-- CONFIGURACOES -->
+<!-- SETTINGS -->
 <section id="screen-settings" class="screen">
   <header class="topbar">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
-    <h1>Configurações</h1>
+    <h1>Settings</h1>
   </header>
 
   <div class="form">
-    <button id="btn-change-pin" class="btn btn-secondary">Alterar PIN</button>
-    <button id="btn-export" class="btn btn-secondary">⬇️ Exportar backup (JSON)</button>
+    <button id="btn-change-pin" class="btn btn-secondary">Change PIN</button>
+    <button id="btn-export" class="btn btn-secondary">⬇️ Export backup (JSON)</button>
 
     <label class="btn btn-secondary photo-upload-label">
-      ⬆️ Importar backup (JSON)
+      ⬆️ Import backup (JSON)
       <input id="input-import" type="file" accept="application/json" hidden>
     </label>
 
     <p class="storage-info" id="storage-info"></p>
 
-    <button id="btn-reset-all" class="btn btn-danger">Apagar todos os dados</button>
+    <button id="btn-reset-all" class="btn btn-danger">Erase all data</button>
   </div>
 </section>
 
 <div id="photo-viewer" class="photo-viewer" hidden>
   <button id="photo-viewer-close" class="icon-btn photo-viewer-close">✕</button>
-  <button id="photo-viewer-delete" class="btn btn-danger photo-viewer-delete">Excluir foto</button>
-  <img id="photo-viewer-img" src="" alt="Foto ampliada">
+  <button id="photo-viewer-delete" class="btn btn-danger photo-viewer-delete">Delete photo</button>
+  <img id="photo-viewer-img" src="" alt="Full-size photo">
 </div>
 
 <div id="toast" class="toast" hidden></div>
+
+<!-- Print-only view, used for "Share as PDF" -->
+<div id="print-house" class="print-house">
+  <h1 id="print-name"></h1>
+  <section>
+    <h2>Address</h2>
+    <p id="print-address"></p>
+  </section>
+  <section id="print-notes-section">
+    <h2>Notes</h2>
+    <p id="print-notes"></p>
+  </section>
+  <section id="print-codes-section">
+    <h2>Door codes</h2>
+    <ul id="print-codes-list"></ul>
+  </section>
+  <section id="print-checklist-section">
+    <h2>Cleaning checklist</h2>
+    <ul id="print-checklist-list"></ul>
+  </section>
+  <p class="print-footer">Generated by Cleaning Organizer</p>
+</div>
 
 <script src="js/app.js"></script>
 </body>
