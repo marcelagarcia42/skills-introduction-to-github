@@ -8,6 +8,7 @@ const EMPLOYEES_KEY = "cleaningOrganizer.employees";
 const PIN_KEY = "cleaningOrganizer.pin";
 const MAX_PHOTO_DIMENSION = 1000; // px - photos are resized before saving
 const PHOTO_QUALITY = 0.7;
+const DEFAULT_HOURLY_RATE = 20;
 
 const ROOMS = [
   { key: "bathrooms", label: "Bathrooms" },
@@ -24,7 +25,6 @@ let state = {
   employees: [],
   currentHouseId: null,
   currentTab: "tab-info",
-  currentRoom: ROOMS[0].key,
   revealedCodes: new Set(),
   calendarYear: null,
   calendarMonth: null,
@@ -35,6 +35,54 @@ let state = {
 function uuid() {
   return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
 }
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+function initials(name) {
+  const words = (name || "").trim().split(/\s+/).filter((w) => /[a-zA-Z0-9]/.test(w));
+  if (!words.length) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.hidden = false;
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toast.hidden = true; }, 2500);
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+  const screen = document.getElementById(id);
+  screen.classList.add("active");
+
+  const tabBar = document.getElementById("tab-bar");
+  const tab = screen.dataset.tab;
+  tabBar.hidden = !tab;
+  document.querySelectorAll(".tab-bar-btn").forEach((btn) => {
+    const target = document.getElementById(btn.dataset.target);
+    btn.classList.toggle("active", !!tab && target && target.dataset.tab === tab);
+  });
+}
+
+document.querySelectorAll(".tab-bar-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.target;
+    if (target === "screen-home") renderHomeList();
+    if (target === "screen-calendar") openCalendar();
+    if (target === "screen-team") renderTeamScreen();
+    if (target === "screen-settings") renderStorageInfo();
+    showScreen(target);
+  });
+});
+
+/* ---------- Storage: houses / visits / employees ---------- */
 
 function loadHouses() {
   try {
@@ -101,6 +149,14 @@ function loadEmployees() {
   } catch (e) {
     state.employees = [];
   }
+  let changed = false;
+  state.employees.forEach((emp) => {
+    if (emp.hourlyRate === undefined || emp.hourlyRate === null) {
+      emp.hourlyRate = DEFAULT_HOURLY_RATE;
+      changed = true;
+    }
+  });
+  if (changed) saveEmployees();
 }
 
 function saveEmployees() {
@@ -111,15 +167,19 @@ function saveEmployees() {
   }
 }
 
+function getEmployeeByName(name) {
+  const trimmed = (name || "").trim().toLowerCase();
+  return state.employees.find((emp) => emp.name.toLowerCase() === trimmed);
+}
+
 // Adds an employee to the roster if her name isn't already there
 // (case-insensitive). Called whenever a visit is scheduled/logged for
 // someone new, so the roster grows without needing to be set up first.
 function addEmployeeIfNew(name) {
   const trimmed = name.trim();
   if (!trimmed) return;
-  const exists = state.employees.some((emp) => emp.name.toLowerCase() === trimmed.toLowerCase());
-  if (!exists) {
-    state.employees.push({ id: uuid(), name: trimmed });
+  if (!getEmployeeByName(trimmed)) {
+    state.employees.push({ id: uuid(), name: trimmed, hourlyRate: DEFAULT_HOURLY_RATE });
     saveEmployees();
     renderEmployeeDatalist();
   }
@@ -172,13 +232,17 @@ function formatHours(h) {
   return `${rounded}h`;
 }
 
-function updateHoursBanner() {
-  const today = new Date();
-  const { start, end } = getWeekRange(today);
-  const startStr = toDateStr(start);
-  const endStr = toDateStr(end);
-  const weekVisits = state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
-  document.getElementById("hours-banner-text").textContent = `This week: ${formatHours(sumHours(weekVisits))} worked`;
+function formatMoney(n) {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
+function getVisitsInRange(startStr, endStr) {
+  return state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
+}
+
+function getMonthVisits(year, month) {
+  const prefix = `${year}-${pad2(month + 1)}`;
+  return state.visits.filter((v) => v.date.startsWith(prefix));
 }
 
 // A visit with no hours yet is scheduled but not completed.
@@ -207,7 +271,7 @@ function createVisitRowElement(visit, { showHouse, onChange }) {
       <div class="item-value">${subtitleParts.join(" · ")}</div>
     </div>
     ${pending
-      ? `<span class="visit-status pending">Scheduled</span><button class="btn-complete-visit">✓ Complete</button>`
+      ? `<span class="visit-status pending">Scheduled</span><button class="btn-complete-visit">Complete</button>`
       : `<span class="visit-status completed">${formatHours(visit.hours)}</span>`}
     <button class="btn-delete-visit" title="Delete">🗑️</button>
   `;
@@ -223,7 +287,6 @@ function createVisitRowElement(visit, { showHouse, onChange }) {
       }
       visit.hours = hours;
       saveVisits();
-      updateHoursBanner();
       onChange();
     };
   }
@@ -231,30 +294,10 @@ function createVisitRowElement(visit, { showHouse, onChange }) {
   row.querySelector(".btn-delete-visit").onclick = () => {
     state.visits = state.visits.filter((v) => v.id !== visit.id);
     saveVisits();
-    updateHoursBanner();
     onChange();
   };
 
   return row;
-}
-
-function showToast(msg) {
-  const toast = document.getElementById("toast");
-  toast.textContent = msg;
-  toast.hidden = false;
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => { toast.hidden = true; }, 2500);
-}
-
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str ?? "";
-  return div.innerHTML;
 }
 
 /* ---------- PIN / Lock screen ---------- */
@@ -271,6 +314,8 @@ function initLockScreen() {
     ? "Create a PIN to protect your passwords (4 to 8 digits)"
     : "Enter your PIN to continue";
   forgotBtn.hidden = mode === "create";
+  input.value = "";
+  errorEl.textContent = "";
 
   let pendingFirstPin = null;
 
@@ -330,7 +375,6 @@ function unlockApp() {
   loadEmployees();
   renderEmployeeDatalist();
   renderHomeList();
-  updateHoursBanner();
   showScreen("screen-home");
 }
 
@@ -340,13 +384,34 @@ document.addEventListener("click", (e) => {
   const backBtn = e.target.closest(".btn-back");
   if (backBtn) {
     const target = backBtn.dataset.backTo;
-    showScreen(target);
     if (target === "screen-home") renderHomeList();
     if (target === "screen-calendar") renderCalendarScreen();
+    if (target === "screen-team") renderTeamScreen();
+    showScreen(target);
   }
 });
 
 /* ---------- Home screen: house list ---------- */
+
+function getNextVisitForHouse(houseId) {
+  const today = toDateStr(new Date());
+  return state.visits
+    .filter((v) => v.houseId === houseId && isPendingVisit(v) && v.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+}
+
+function getLastCompletedVisitForHouse(houseId) {
+  return state.visits
+    .filter((v) => v.houseId === houseId && !isPendingVisit(v))
+    .sort((a, b) => b.date.localeCompare(a.date))[0] || null;
+}
+
+function shortDayLabel(dateStr) {
+  const d = parseDateStr(dateStr);
+  const todayStr = toDateStr(new Date());
+  if (dateStr === todayStr) return "TODAY";
+  return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }).toUpperCase();
+}
 
 function renderHomeList(filterText) {
   const list = document.getElementById("house-list");
@@ -364,37 +429,80 @@ function renderHomeList(filterText) {
   houses.forEach((h) => {
     const card = document.createElement("div");
     card.className = "house-card";
+
     const thumb = h.photos && h.photos[0]
-      ? `<img class="thumb" src="${h.photos[0].dataUrl}" alt="">`
-      : `<div class="thumb-placeholder">🏠</div>`;
+      ? `<img class="avatar" src="${h.photos[0].dataUrl}" alt="">`
+      : `<div class="avatar">${initials(h.name)}</div>`;
+
+    const next = getNextVisitForHouse(h.id);
+    let metaHtml;
+    if (next) {
+      metaHtml = `
+        <p class="meta-top">${shortDayLabel(next.date)}</p>
+        <p class="meta-bottom">${escapeHtml(next.employeeName || "")}</p>
+      `;
+    } else {
+      const last = getLastCompletedVisitForHouse(h.id);
+      metaHtml = last
+        ? `<p class="meta-top done">DONE</p><p class="meta-bottom">${escapeHtml(last.employeeName || "")}</p>`
+        : "";
+    }
+
     card.innerHTML = `
       ${thumb}
       <div class="house-info">
         <p class="house-name">${escapeHtml(h.name)}</p>
         <p class="house-address">${escapeHtml(h.address || "No address")}</p>
       </div>
+      <div class="house-meta">${metaHtml}</div>
     `;
     card.onclick = () => openHouseDetail(h.id);
     list.appendChild(card);
   });
+
+  updateHomeHero();
 }
 
 document.getElementById("search-input").addEventListener("input", (e) => renderHomeList(e.target.value));
 
-document.getElementById("btn-settings").onclick = () => {
-  renderStorageInfo();
-  showScreen("screen-settings");
-};
+function updateHomeHero() {
+  const today = new Date();
+  const { start, end } = getWeekRange(today);
+  const weekVisits = getVisitsInRange(toDateStr(start), toDateStr(end));
+  const monthVisits = getMonthVisits(today.getFullYear(), today.getMonth());
 
-document.getElementById("btn-calendar").onclick = openCalendar;
-document.getElementById("hours-banner").onclick = openCalendar;
+  document.getElementById("hero-week-hours").innerHTML =
+    `${Math.round(sumHours(weekVisits) * 100) / 100}<span>hours</span>`;
+  document.getElementById("hero-month-hours").textContent = formatHours(sumHours(monthVisits));
+
+  // "Today" banner: today's visits first, else the nearest upcoming one.
+  const todayStr = toDateStr(today);
+  const upcoming = state.visits
+    .filter((v) => v.date >= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  const banner = document.getElementById("today-banner");
+  if (!upcoming) {
+    banner.hidden = true;
+    return;
+  }
+  const house = getHouse(upcoming.houseId);
+  const dayLabel = upcoming.date === todayStr ? "Today" : shortDayLabel(upcoming.date).replace(/^(\w{3}).*/, (m, d) => d.charAt(0) + d.slice(1).toLowerCase());
+  document.getElementById("today-banner-text").textContent =
+    `${dayLabel} · ${house ? house.name : "Deleted house"}${upcoming.employeeName ? " with " + upcoming.employeeName : ""}`;
+  banner.hidden = false;
+  banner.onclick = () => { if (house) openHouseDetail(house.id); };
+}
+
+document.getElementById("btn-lock-app").onclick = () => initLockScreen();
+
+/* ---------- Calendar ---------- */
 
 function openCalendar() {
   const today = new Date();
   state.calendarYear = today.getFullYear();
   state.calendarMonth = today.getMonth();
   renderCalendarScreen();
-  showScreen("screen-calendar");
 }
 
 document.getElementById("btn-prev-month").onclick = () => {
@@ -410,6 +518,11 @@ document.getElementById("btn-next-month").onclick = () => {
 };
 
 function renderCalendarScreen() {
+  if (state.calendarYear === null) {
+    const today = new Date();
+    state.calendarYear = today.getFullYear();
+    state.calendarMonth = today.getMonth();
+  }
   const year = state.calendarYear;
   const month = state.calendarMonth;
 
@@ -417,22 +530,14 @@ function renderCalendarScreen() {
   document.getElementById("calendar-month-label").textContent = monthLabel;
 
   const monthPrefix = `${year}-${pad2(month + 1)}`;
-  const monthVisits = state.visits.filter((v) => v.date.startsWith(monthPrefix));
-  document.getElementById("stat-month-hours").textContent = formatHours(sumHours(monthVisits));
-
-  const today = new Date();
-  const { start, end } = getWeekRange(today);
-  const startStr = toDateStr(start);
-  const endStr = toDateStr(end);
-  const weekVisits = state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
-  document.getElementById("stat-week-hours").textContent = formatHours(sumHours(weekVisits));
+  const monthVisits = getMonthVisits(year, month);
 
   const grid = document.getElementById("calendar-grid");
   grid.innerHTML = "";
   const firstDay = new Date(year, month, 1);
   const startWeekday = firstDay.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayStr = toDateStr(today);
+  const todayStr = toDateStr(new Date());
 
   for (let i = 0; i < startWeekday; i++) {
     const empty = document.createElement("div");
@@ -445,9 +550,7 @@ function renderCalendarScreen() {
     const hasPending = dayVisits.some(isPendingVisit);
     const hasCompleted = dayVisits.some((v) => !isPendingVisit(v));
     const cell = document.createElement("div");
-    cell.className = "calendar-day"
-      + (dateStr === todayStr ? " today" : "")
-      + (dayVisits.length ? " has-visits" : "");
+    cell.className = "calendar-day" + (dateStr === todayStr ? " today" : "");
     let dotsHtml = "";
     if (dayVisits.length) {
       dotsHtml = `<span class="day-dots">`
@@ -465,7 +568,10 @@ function renderCalendarScreen() {
   const sorted = [...monthVisits].sort((a, b) => b.date.localeCompare(a.date));
   empty.hidden = sorted.length > 0;
   sorted.forEach((v) => {
-    list.appendChild(createVisitRowElement(v, { showHouse: true, onChange: renderCalendarScreen }));
+    list.appendChild(createVisitRowElement(v, {
+      showHouse: true,
+      onChange: () => { renderCalendarScreen(); updateHomeHero(); },
+    }));
   });
 }
 
@@ -500,7 +606,6 @@ document.getElementById("schedule-visit-form").addEventListener("submit", (e) =>
   addEmployeeIfNew(employeeName);
   state.visits.push({ id: uuid(), houseId, date, employeeName, hours: null, note });
   saveVisits();
-  updateHoursBanner();
   renderCalendarScreen();
   showScreen("screen-calendar");
   showToast("Cleaning scheduled!");
@@ -569,6 +674,9 @@ function openHouseDetail(id) {
   if (!h) return;
 
   document.getElementById("detail-name").textContent = h.name;
+  const visitCount = state.visits.filter((v) => v.houseId === h.id && !isPendingVisit(v)).length;
+  document.getElementById("detail-subline").textContent =
+    `${h.address || "No address on file"} · ${visitCount} visit${visitCount === 1 ? "" : "s"} logged`;
   document.getElementById("detail-address").textContent = h.address || "No address on file";
   document.getElementById("detail-notes").textContent = h.notes || "No notes";
 
@@ -581,8 +689,8 @@ function openHouseDetail(id) {
   }
 
   switchTab("tab-info");
-  setRoom(ROOMS[0].key);
   renderDoorCodes(h);
+  renderChecklist(h);
   renderPhotos(h);
   renderVisits(h);
   document.getElementById("input-visit-date").value = toDateStr(new Date());
@@ -603,17 +711,6 @@ function switchTab(tabId) {
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === tabId));
 }
 
-document.querySelectorAll(".room-tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => setRoom(btn.dataset.room));
-});
-
-function setRoom(roomKey) {
-  state.currentRoom = roomKey;
-  document.querySelectorAll(".room-tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.room === roomKey));
-  const h = getHouse(state.currentHouseId);
-  if (h) renderChecklist(h);
-}
-
 document.getElementById("btn-delete-house").onclick = () => {
   const h = getHouse(state.currentHouseId);
   if (!h) return;
@@ -623,7 +720,6 @@ document.getElementById("btn-delete-house").onclick = () => {
     saveHouses();
     saveVisits();
     renderHomeList();
-    updateHoursBanner();
     showScreen("screen-home");
   }
 };
@@ -639,7 +735,10 @@ function renderVisits(house) {
     .sort((a, b) => b.date.localeCompare(a.date));
   empty.hidden = visits.length > 0;
   visits.forEach((v) => {
-    list.appendChild(createVisitRowElement(v, { showHouse: false, onChange: () => renderVisits(house) }));
+    list.appendChild(createVisitRowElement(v, {
+      showHouse: false,
+      onChange: () => { renderVisits(house); updateHomeHero(); },
+    }));
   });
 }
 
@@ -667,7 +766,8 @@ document.getElementById("visit-form").addEventListener("submit", (e) => {
   hoursInput.value = "";
   noteInput.value = "";
   renderVisits(h);
-  updateHoursBanner();
+  document.getElementById("detail-subline").textContent =
+    `${h.address || "No address on file"} · ${state.visits.filter((v) => v.houseId === h.id && !isPendingVisit(v)).length} visit(s) logged`;
   showToast(hours === null ? "Cleaning scheduled!" : "Visit logged!");
 });
 
@@ -726,6 +826,8 @@ document.getElementById("btn-share-pdf").onclick = () => {
     checklistSection.hidden = true;
   }
 
+  document.getElementById("print-payroll").hidden = true;
+  document.getElementById("print-house").hidden = false;
   window.print();
 };
 
@@ -741,9 +843,9 @@ function renderDoorCodes(house) {
     row.innerHTML = `
       <div class="item-main">
         <div class="item-title">${escapeHtml(code.label)}</div>
-        <div class="item-value ${revealed ? "" : "hidden-value"}">${revealed ? escapeHtml(code.value) : "••••••"}</div>
+        <div class="item-value ${revealed ? "" : "hidden-value"}">${revealed ? escapeHtml(code.value) : "• • • •"}</div>
       </div>
-      <button class="btn-reveal" title="Show/hide">${revealed ? "🙈" : "👁️"}</button>
+      <button class="pill-btn btn-reveal">${revealed ? "Hide" : "Reveal"}</button>
       <button class="btn-delete-code" title="Delete">🗑️</button>
     `;
     row.querySelector(".btn-reveal").onclick = () => {
@@ -779,33 +881,63 @@ document.getElementById("door-code-form").addEventListener("submit", (e) => {
 
 /* ---------- Checklist / cleaning process ---------- */
 
-function renderChecklist(house) {
-  const list = document.getElementById("checklist-list");
-  list.innerHTML = "";
-  (house.checklist || [])
-    .filter((item) => item.room === state.currentRoom)
-    .forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "item-row" + (item.done ? " checked" : "");
-    row.innerHTML = `
-      <input type="checkbox" ${item.done ? "checked" : ""}>
-      <div class="item-main">
-        <div class="item-title">${escapeHtml(item.text)}</div>
-      </div>
-      <button class="btn-delete-item" title="Delete">🗑️</button>
-    `;
-    row.querySelector('input[type="checkbox"]').onchange = (e) => {
-      item.done = e.target.checked;
-      saveHouses();
-      renderChecklist(house);
-    };
-    row.querySelector(".btn-delete-item").onclick = () => {
-      house.checklist = house.checklist.filter((c) => c.id !== item.id);
-      saveHouses();
-      renderChecklist(house);
-    };
-    list.appendChild(row);
+// Populate the room <select> in the "add task" form once.
+(function initChecklistRoomSelect() {
+  const select = document.getElementById("input-checklist-room");
+  ROOMS.forEach((room) => {
+    const option = document.createElement("option");
+    option.value = room.key;
+    option.textContent = room.label;
+    select.appendChild(option);
   });
+})();
+
+function renderChecklist(house) {
+  const container = document.getElementById("room-groups");
+  container.innerHTML = "";
+  const items = house.checklist || [];
+
+  ROOMS.forEach((room) => {
+    const roomItems = items.filter((item) => item.room === room.key);
+    if (!roomItems.length) return;
+
+    const group = document.createElement("div");
+    group.className = "room-group";
+    const title = document.createElement("p");
+    title.className = "room-title";
+    title.textContent = room.label;
+    group.appendChild(title);
+
+    const list = document.createElement("div");
+    list.className = "item-list";
+    roomItems.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "item-row" + (item.done ? " checked" : "");
+      row.innerHTML = `
+        <input type="checkbox" ${item.done ? "checked" : ""}>
+        <div class="item-main">
+          <div class="item-title">${escapeHtml(item.text)}</div>
+        </div>
+        <button class="btn-delete-item" title="Delete">🗑️</button>
+      `;
+      row.querySelector('input[type="checkbox"]').onchange = (e) => {
+        item.done = e.target.checked;
+        saveHouses();
+        renderChecklist(house);
+      };
+      row.querySelector(".btn-delete-item").onclick = () => {
+        house.checklist = house.checklist.filter((c) => c.id !== item.id);
+        saveHouses();
+        renderChecklist(house);
+      };
+      list.appendChild(row);
+    });
+    group.appendChild(list);
+    container.appendChild(group);
+  });
+
+  const done = items.filter((i) => i.done).length;
+  document.getElementById("checklist-progress-text").textContent = `${done} of ${items.length} done`;
 }
 
 document.getElementById("checklist-form").addEventListener("submit", (e) => {
@@ -813,10 +945,11 @@ document.getElementById("checklist-form").addEventListener("submit", (e) => {
   const h = getHouse(state.currentHouseId);
   if (!h) return;
   const input = document.getElementById("input-checklist-text");
+  const roomSelect = document.getElementById("input-checklist-room");
   const text = input.value.trim();
   if (!text) return;
   h.checklist = h.checklist || [];
-  h.checklist.push({ id: uuid(), text, done: false, room: state.currentRoom });
+  h.checklist.push({ id: uuid(), text, done: false, room: roomSelect.value });
   saveHouses();
   input.value = "";
   renderChecklist(h);
@@ -915,45 +1048,128 @@ document.getElementById("photo-viewer-close").onclick = () => {
   document.getElementById("photo-viewer").hidden = true;
 };
 
-/* ---------- Employees ---------- */
+/* ---------- Team (employees, hours & pay) ---------- */
 
-document.getElementById("btn-manage-employees").onclick = () => {
-  renderEmployeesList();
-  showScreen("screen-employees");
-};
+function computeWeeklyPay(refDate) {
+  const { start, end } = getWeekRange(refDate);
+  const weekVisits = getVisitsInRange(toDateStr(start), toDateStr(end)).filter((v) => !isPendingVisit(v));
 
-function renderEmployeesList() {
-  const list = document.getElementById("employees-list");
-  const empty = document.getElementById("employees-empty");
+  const rows = state.employees.map((emp) => {
+    const empVisits = weekVisits.filter((v) => (v.employeeName || "").toLowerCase() === emp.name.toLowerCase());
+    const hours = sumHours(empVisits);
+    return { employee: emp, hours, visitCount: empVisits.length, pay: hours * (emp.hourlyRate || 0) };
+  });
+
+  const totalPay = rows.reduce((sum, r) => sum + r.pay, 0);
+  const totalHours = rows.reduce((sum, r) => sum + r.hours, 0);
+  const peopleWithHours = rows.filter((r) => r.hours > 0).length;
+
+  return { start, end, rows, totalPay, totalHours, peopleWithHours };
+}
+
+function renderTeamScreen() {
+  const { start, end, rows, totalPay, totalHours, peopleWithHours } = computeWeeklyPay(new Date());
+
+  document.getElementById("team-subline").textContent =
+    `Hours and pay for the week of ${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  document.getElementById("team-payroll-amount").textContent = formatMoney(totalPay);
+  document.getElementById("team-payroll-sub").textContent =
+    `${Math.round(totalHours * 100) / 100} hours · ${peopleWithHours} people`;
+
+  const list = document.getElementById("team-list");
+  const empty = document.getElementById("team-empty");
   list.innerHTML = "";
-  const sorted = [...state.employees].sort((a, b) => a.name.localeCompare(b.name));
-  empty.hidden = sorted.length > 0;
-  sorted.forEach((emp) => {
-    const row = document.createElement("div");
-    row.className = "item-row";
-    row.innerHTML = `
-      <div class="item-main"><div class="item-title">${escapeHtml(emp.name)}</div></div>
-      <button class="btn-delete-employee" title="Delete">🗑️</button>
+  const sortedRows = [...rows].sort((a, b) => a.employee.name.localeCompare(b.employee.name));
+  empty.hidden = sortedRows.length > 0;
+
+  sortedRows.forEach(({ employee, hours, visitCount, pay }) => {
+    const card = document.createElement("div");
+    card.className = "employee-card";
+    card.innerHTML = `
+      <div class="employee-top">
+        <div class="avatar round">${initials(employee.name)}</div>
+        <div class="employee-info">
+          <div class="employee-name">${escapeHtml(employee.name)}</div>
+          <div class="employee-sub">${formatHours(hours)} · ${visitCount} visit${visitCount === 1 ? "" : "s"}</div>
+        </div>
+        <div class="employee-pay">
+          <div class="pay-amount">${formatMoney(pay)}</div>
+          <div class="pay-label">This week</div>
+        </div>
+      </div>
+      <div class="rate-row">
+        <span class="rate-label">Hourly rate</span>
+        <div class="rate-stepper">
+          <button class="rate-minus" type="button">−</button>
+          <span class="rate-value">$${employee.hourlyRate}/h</span>
+          <button class="rate-plus" type="button">+</button>
+        </div>
+      </div>
+      <div class="employee-remove"><button type="button">Remove</button></div>
     `;
-    row.querySelector(".btn-delete-employee").onclick = () => {
-      state.employees = state.employees.filter((e) => e.id !== emp.id);
+    card.querySelector(".rate-minus").onclick = () => {
+      employee.hourlyRate = Math.max(0, (employee.hourlyRate || 0) - 1);
       saveEmployees();
-      renderEmployeeDatalist();
-      renderEmployeesList();
+      renderTeamScreen();
     };
-    list.appendChild(row);
+    card.querySelector(".rate-plus").onclick = () => {
+      employee.hourlyRate = (employee.hourlyRate || 0) + 1;
+      saveEmployees();
+      renderTeamScreen();
+    };
+    card.querySelector(".employee-remove button").onclick = () => {
+      if (confirm(`Remove ${employee.name} from your team?`)) {
+        state.employees = state.employees.filter((e) => e.id !== employee.id);
+        saveEmployees();
+        renderEmployeeDatalist();
+        renderTeamScreen();
+      }
+    };
+    list.appendChild(card);
   });
 }
 
+document.getElementById("btn-add-employee").onclick = () => {
+  document.getElementById("input-employee-name").value = "";
+  document.getElementById("input-employee-rate").value = DEFAULT_HOURLY_RATE;
+  showScreen("screen-employee-form");
+};
+
 document.getElementById("employee-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const input = document.getElementById("input-employee-name");
-  const name = input.value.trim();
-  if (!name) return;
-  addEmployeeIfNew(name);
-  input.value = "";
-  renderEmployeesList();
+  const name = document.getElementById("input-employee-name").value.trim();
+  const rate = parseFloat(document.getElementById("input-employee-rate").value);
+  if (!name || isNaN(rate) || rate < 0) return;
+  if (getEmployeeByName(name)) {
+    alert("There's already someone on your team with that name.");
+    return;
+  }
+  state.employees.push({ id: uuid(), name, hourlyRate: rate });
+  saveEmployees();
+  renderEmployeeDatalist();
+  renderTeamScreen();
+  showScreen("screen-team");
 });
+
+document.getElementById("btn-export-payroll").onclick = () => {
+  const { start, end, rows, totalPay, totalHours } = computeWeeklyPay(new Date());
+  const weekLabel = `Week of ${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  document.getElementById("print-payroll-week").textContent = weekLabel;
+  document.getElementById("print-payroll-total").textContent =
+    `Total: ${formatMoney(totalPay)} · ${Math.round(totalHours * 100) / 100} hours`;
+
+  const list = document.getElementById("print-payroll-list");
+  list.innerHTML = "";
+  rows.filter((r) => r.hours > 0).forEach((r) => {
+    const li = document.createElement("li");
+    li.textContent = `${r.employee.name}: ${formatHours(r.hours)} × $${r.employee.hourlyRate}/h = ${formatMoney(r.pay)}`;
+    list.appendChild(li);
+  });
+
+  document.getElementById("print-house").hidden = true;
+  document.getElementById("print-payroll").hidden = false;
+  window.print();
+};
 
 /* ---------- Settings ---------- */
 
@@ -1000,14 +1216,16 @@ document.getElementById("input-import").addEventListener("change", (e) => {
       } else {
         state.houses = importedHouses;
         state.visits = importedVisits;
-        state.employees = importedEmployees;
+        state.employees = importedEmployees.map((emp) => ({
+          ...emp,
+          hourlyRate: emp.hourlyRate ?? DEFAULT_HOURLY_RATE,
+        }));
         saveEmployees();
       }
       saveHouses();
       saveVisits();
       renderHomeList();
       renderStorageInfo();
-      updateHoursBanner();
       renderEmployeeDatalist();
       showToast("Backup imported successfully!");
     } catch (err) {

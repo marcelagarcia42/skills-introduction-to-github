@@ -8,13 +8,13 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="theme-color" content="#2f9e6e">
+<meta name="theme-color" content="#17201c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cleaning">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -33,16 +33,27 @@
 </section>
 
 <!-- HOME: HOUSE LIST -->
-<section id="screen-home" class="screen">
+<section id="screen-home" class="screen" data-tab="houses">
   <header class="topbar">
-    <h1>🧹 My Houses</h1>
-    <button id="btn-calendar" class="icon-btn" title="Calendar">📅</button>
-    <button id="btn-settings" class="icon-btn" title="Settings">⚙️</button>
+    <h1>My houses</h1>
+    <button id="btn-add-house" class="btn-round-dark" title="Add house">+</button>
   </header>
 
-  <button id="hours-banner" class="hours-banner">
-    <span>⏱️</span>
-    <span id="hours-banner-text">This week: 0h worked</span>
+  <div class="hero-card">
+    <div class="hero-main">
+      <p class="hero-label">This week worked</p>
+      <p class="hero-value" id="hero-week-hours">0<span>hours</span></p>
+    </div>
+    <div class="hero-side">
+      <p class="hero-label">Month</p>
+      <p class="hero-side-value" id="hero-month-hours">0h</p>
+    </div>
+  </div>
+
+  <button id="today-banner" class="today-banner" hidden>
+    <span class="dot"></span>
+    <span id="today-banner-text"></span>
+    <span class="chev">›</span>
   </button>
 
   <div class="search-bar">
@@ -55,15 +66,13 @@
     No houses yet.<br>
     Tap the <strong>+</strong> button to add your first house.
   </p>
-
-  <button id="btn-add-house" class="fab" title="Add house">+</button>
 </section>
 
 <!-- HOUSE FORM: ADD / EDIT -->
-<section id="screen-house-form" class="screen">
-  <header class="topbar">
+<section id="screen-house-form" class="screen" data-tab="houses">
+  <header class="topbar with-border">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
-    <h1 id="house-form-title">New House</h1>
+    <h1 id="house-form-title" style="font-size:1.3rem;">New House</h1>
   </header>
 
   <form id="house-form" class="form">
@@ -81,12 +90,15 @@
 </section>
 
 <!-- HOUSE DETAIL -->
-<section id="screen-house-detail" class="screen">
+<section id="screen-house-detail" class="screen" data-tab="houses">
   <header class="topbar">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
-    <h1 id="detail-name">House</h1>
-    <button id="btn-edit-house" class="icon-btn" title="Edit">✏️</button>
+    <div style="flex:1;"></div>
   </header>
+  <div style="padding: 0 20px 4px;">
+    <h1 id="detail-name" style="font-size:1.7rem;">House</h1>
+    <p id="detail-subline" style="margin:2px 0 0;color:var(--ink-soft);font-size:0.85rem;"></p>
+  </div>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="tab-info">Info</button>
@@ -100,42 +112,37 @@
     <div class="card">
       <p class="label">Address</p>
       <p id="detail-address" class="value"></p>
-      <a id="detail-map-link" class="btn-link" target="_blank" rel="noopener">📍 Open in Maps</a>
+      <a id="detail-map-link" class="btn-link" target="_blank" rel="noopener" style="padding-left:0;">Open in Maps →</a>
     </div>
     <div class="card">
       <p class="label">Notes</p>
       <p id="detail-notes" class="value"></p>
     </div>
-    <button id="btn-share-pdf" class="btn btn-secondary">📄 Share as PDF</button>
+    <button id="btn-share-pdf" class="btn btn-primary">Share as PDF</button>
+    <button id="btn-edit-house" class="btn btn-secondary">Edit house</button>
     <button id="btn-delete-house" class="btn btn-danger">Delete this house</button>
   </div>
 
   <div id="tab-codes" class="tab-content">
-    <p class="warning-text">⚠️ This information is saved only on this device. Be careful who has access to this phone.</p>
     <div id="door-codes-list" class="item-list"></div>
     <form id="door-code-form" class="inline-form">
       <input id="input-code-label" type="text" placeholder="Location (ex: Front door)" required>
       <input id="input-code-value" type="text" placeholder="Password / code" required>
       <button type="submit" class="btn btn-primary">Add</button>
     </form>
+    <p class="warning-text">Saved on this device only. Be careful who has access to this phone.</p>
   </div>
 
   <div id="tab-checklist" class="tab-content">
     <div class="checklist-header">
-      <button id="btn-reset-checklist" class="btn-link">🔄 Reset (new cleaning)</button>
+      <span class="progress-text" id="checklist-progress-text">0 of 0 done</span>
+      <button id="btn-reset-checklist" class="btn-link">Reset</button>
     </div>
-    <div id="room-tabs" class="room-tabs">
-      <button class="room-tab-btn active" data-room="bathrooms">Bathrooms</button>
-      <button class="room-tab-btn" data-room="kitchen">Kitchen</button>
-      <button class="room-tab-btn" data-room="bedrooms">Bedrooms</button>
-      <button class="room-tab-btn" data-room="living_rooms">Living Rooms</button>
-      <button class="room-tab-btn" data-room="outdoor">Outdoor Area</button>
-      <button class="room-tab-btn" data-room="laundry">Laundry</button>
-    </div>
-    <div id="checklist-list" class="item-list"></div>
+    <div id="room-groups"></div>
     <form id="checklist-form" class="inline-form">
+      <select id="input-checklist-room"></select>
       <input id="input-checklist-text" type="text" placeholder="Ex: Clean the tub" required>
-      <button type="submit" class="btn btn-primary">Add</button>
+      <button type="submit" class="btn btn-primary">Add task</button>
     </form>
   </div>
 
@@ -154,7 +161,7 @@
 
   <div id="tab-photos" class="tab-content">
     <label class="btn btn-primary photo-upload-label">
-      📷 Add photo
+      Add photo
       <input id="input-photo" type="file" accept="image/*" multiple hidden>
     </label>
     <div id="photos-grid" class="photos-grid"></div>
@@ -162,47 +169,38 @@
 </section>
 
 <!-- CALENDAR -->
-<section id="screen-calendar" class="screen">
+<section id="screen-calendar" class="screen" data-tab="calendar">
   <header class="topbar">
-    <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
     <h1>Calendar</h1>
   </header>
 
-  <div class="stats-row">
-    <div class="stat-tile">
-      <p class="stat-label">This week</p>
-      <p id="stat-week-hours" class="stat-value">0h</p>
-    </div>
-    <div class="stat-tile">
-      <p class="stat-label">This month</p>
-      <p id="stat-month-hours" class="stat-value">0h</p>
-    </div>
-  </div>
-
   <div class="calendar-nav">
-    <button id="btn-prev-month" class="icon-btn" title="Previous month">←</button>
     <h2 id="calendar-month-label"></h2>
-    <button id="btn-next-month" class="icon-btn" title="Next month">→</button>
+    <div style="display:flex;gap:8px;">
+      <button id="btn-prev-month" class="icon-btn circle" title="Previous month">←</button>
+      <button id="btn-next-month" class="icon-btn circle" title="Next month">→</button>
+    </div>
   </div>
 
   <div class="calendar-weekdays">
-    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
   </div>
   <div id="calendar-grid" class="calendar-grid"></div>
   <p class="calendar-legend"><span class="day-dot pending"></span> Scheduled &nbsp; <span class="day-dot completed"></span> Completed</p>
 
-  <h3 class="section-heading">Visits this month</h3>
-  <div id="calendar-visits-list" class="item-list"></div>
+  <div class="section-heading-row">
+    <h3>Visits this month</h3>
+    <button id="btn-schedule-visit" class="pill-btn">+ Schedule</button>
+  </div>
+  <div id="calendar-visits-list" class="item-list" style="padding: 0 16px;"></div>
   <p id="calendar-visits-empty" class="empty-state" hidden>No visits scheduled or logged this month.</p>
-
-  <button id="btn-schedule-visit" class="fab" title="Schedule a cleaning">+</button>
 </section>
 
 <!-- SCHEDULE A CLEANING -->
-<section id="screen-schedule-visit" class="screen">
-  <header class="topbar">
+<section id="screen-schedule-visit" class="screen" data-tab="calendar">
+  <header class="topbar with-border">
     <button class="icon-btn btn-back" data-back-to="screen-calendar">←</button>
-    <h1>Schedule Cleaning</h1>
+    <h1 style="font-size:1.3rem;">Schedule Cleaning</h1>
   </header>
 
   <form id="schedule-visit-form" class="form">
@@ -222,44 +220,76 @@
   </form>
 </section>
 
+<!-- TEAM -->
+<section id="screen-team" class="screen" data-tab="team">
+  <header class="topbar">
+    <h1>Team</h1>
+  </header>
+  <p id="team-subline" style="margin:0 20px 4px;color:var(--ink-soft);font-size:0.85rem;"></p>
+
+  <div class="hero-card">
+    <div class="hero-main">
+      <p class="hero-label" id="team-payroll-label">Payroll this week</p>
+      <p class="hero-value" id="team-payroll-amount">$0</p>
+    </div>
+    <button id="btn-export-payroll" class="hero-action">Export</button>
+  </div>
+  <p id="team-payroll-sub" style="margin:8px 16px 0;color:var(--ink-soft);font-size:0.8rem;"></p>
+
+  <div id="team-list" style="margin-top: 16px;"></div>
+  <p id="team-empty" class="empty-state" hidden>No employees yet — add one below, or one will be added automatically the first time you schedule a visit for her.</p>
+
+  <button id="btn-add-employee" class="add-employee-card">+ Add employee</button>
+</section>
+
+<!-- ADD EMPLOYEE -->
+<section id="screen-employee-form" class="screen" data-tab="team">
+  <header class="topbar with-border">
+    <button class="icon-btn btn-back" data-back-to="screen-team">←</button>
+    <h1 style="font-size:1.3rem;">New Employee</h1>
+  </header>
+  <form id="employee-form" class="form">
+    <label>Name
+      <input id="input-employee-name" type="text" required>
+    </label>
+    <label>Hourly rate ($/h)
+      <input id="input-employee-rate" type="number" min="0" step="0.5" value="20" required>
+    </label>
+    <button type="submit" class="btn btn-primary">Add Employee</button>
+  </form>
+</section>
+
 <datalist id="employees-datalist"></datalist>
 
 <!-- SETTINGS -->
-<section id="screen-settings" class="screen">
+<section id="screen-settings" class="screen" data-tab="settings">
   <header class="topbar">
-    <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
     <h1>Settings</h1>
   </header>
 
-  <div class="form">
-    <button id="btn-manage-employees" class="btn btn-secondary">👥 Manage Employees</button>
-    <button id="btn-change-pin" class="btn btn-secondary">Change PIN</button>
-    <button id="btn-export" class="btn btn-secondary">⬇️ Export backup (JSON)</button>
-
-    <label class="btn btn-secondary photo-upload-label">
-      ⬆️ Import backup (JSON)
-      <input id="input-import" type="file" accept="application/json" hidden>
+  <div class="settings-card" style="margin-top:8px;">
+    <button id="btn-change-pin" class="settings-row">
+      <span>Change PIN</span>
+      <span class="row-meta">›</span>
+    </button>
+    <button id="btn-export" class="settings-row">
+      <span>Export backup</span>
+      <span class="row-meta">JSON ›</span>
+    </button>
+    <label class="settings-row" for="input-import">
+      <span>Import backup</span>
+      <span class="row-meta">JSON ›</span>
+      <input id="input-import" type="file" accept="application/json">
     </label>
-
-    <p class="storage-info" id="storage-info"></p>
-
-    <button id="btn-reset-all" class="btn btn-danger">Erase all data</button>
+    <button id="btn-reset-all" class="settings-row danger">
+      <span>Erase all data</span>
+      <span class="row-meta">›</span>
+    </button>
   </div>
-</section>
 
-<!-- EMPLOYEES -->
-<section id="screen-employees" class="screen">
-  <header class="topbar">
-    <button class="icon-btn btn-back" data-back-to="screen-settings">←</button>
-    <h1>Employees</h1>
-  </header>
+  <p class="storage-info" id="storage-info"></p>
 
-  <form id="employee-form" class="inline-form" style="padding: 16px 16px 0;">
-    <input id="input-employee-name" type="text" placeholder="Employee name" required>
-    <button type="submit" class="btn btn-primary">Add</button>
-  </form>
-  <div id="employees-list" class="item-list" style="padding: 16px;"></div>
-  <p id="employees-empty" class="empty-state" hidden>No employees added yet — they're added automatically the first time you schedule or log a visit for them.</p>
+  <button id="btn-lock-app" class="btn btn-primary" style="margin: 8px 16px; width: calc(100% - 32px);">Lock app</button>
 </section>
 
 <div id="photo-viewer" class="photo-viewer" hidden>
@@ -269,6 +299,14 @@
 </div>
 
 <div id="toast" class="toast" hidden></div>
+
+<!-- Persistent bottom tab bar -->
+<nav id="tab-bar" class="tab-bar">
+  <button class="tab-bar-btn" data-target="screen-home"><span class="tab-dot"></span>Houses</button>
+  <button class="tab-bar-btn" data-target="screen-calendar"><span class="tab-dot"></span>Calendar</button>
+  <button class="tab-bar-btn" data-target="screen-team"><span class="tab-dot"></span>Team</button>
+  <button class="tab-bar-btn" data-target="screen-settings"><span class="tab-dot"></span>Settings</button>
+</nav>
 
 <!-- Print-only view, used for "Share as PDF" -->
 <div id="print-house" class="print-house">
@@ -288,6 +326,20 @@
   <section id="print-checklist-section">
     <h2>Cleaning checklist</h2>
     <div id="print-checklist-groups"></div>
+  </section>
+  <p class="print-footer">Generated by Cleaning Organizer</p>
+</div>
+
+<!-- Print-only view, used for Team "Export" -->
+<div id="print-payroll" class="print-house">
+  <h1>Payroll</h1>
+  <section>
+    <h2 id="print-payroll-week"></h2>
+    <p id="print-payroll-total"></p>
+  </section>
+  <section>
+    <h2>By employee</h2>
+    <ul id="print-payroll-list"></ul>
   </section>
   <p class="print-footer">Generated by Cleaning Organizer</p>
 </div>
