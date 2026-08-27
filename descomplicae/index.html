@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Descomplicaê</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<meta name="theme-color" content="#6c3dd6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Descomplicaê">
+<meta name="description" content="Explicações fáceis e lúdicas de Matemática, Química, Física e Biologia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- HOME -->
+<section id="screen-home" class="screen">
+  <header class="hero">
+    <p class="hero-kicker">Descomplicaê</p>
+    <h1>Difícil, a gente descomplica. 💡</h1>
+    <p class="hero-sub">Explicações fáceis e divertidas de Matemática, Química, Física e Biologia — do 5º ano até o 3º ano do Ensino Médio.</p>
+  </header>
+
+  <div class="search-bar">
+    <span class="search-icon">🔎</span>
+    <input id="search-input" type="text" placeholder="Pesquisar um assunto... ex: Pitágoras, fotossíntese">
+  </div>
+  <div id="search-results" class="search-results" hidden></div>
+
+  <h2 class="section-title">Escolha a matéria</h2>
+  <div id="subject-grid" class="subject-grid"></div>
+
+  <p class="footnote">Conteúdo baseado nos materiais da rede pública. Novos assuntos chegando toda semana! ✨</p>
+</section>
+
+<!-- SUBJECT: TOPIC LIST -->
+<section id="screen-subject" class="screen">
+  <header class="topbar" id="subject-topbar">
+    <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
+    <div class="topbar-title">
+      <p id="subject-emoji" class="topbar-emoji"></p>
+      <h1 id="subject-name">Matéria</h1>
+    </div>
+  </header>
+  <p id="subject-tagline" class="subject-tagline"></p>
+  <div id="topic-groups" class="topic-groups"></div>
+</section>
+
+<!-- TOPIC DETAIL -->
+<section id="screen-topic" class="screen">
+  <header class="topbar">
+    <button class="icon-btn btn-back" id="topic-back-btn">←</button>
+    <div class="topbar-title">
+      <p id="topic-badges" class="topic-badges"></p>
+      <h1 id="topic-title">Assunto</h1>
+    </div>
+  </header>
+
+  <div id="topic-content" class="topic-content"></div>
+
+</section>
+
+<script src="js/app.js"></script>
+</body>
+</html>

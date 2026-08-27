@@ -1,0 +1,620 @@
+/* ---------------------------------------------------------
+   RESET & BASE
+--------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #241a3a;
+  --ink-soft: #6b6280;
+  --bg: #faf7f2;
+  --card-bg: #ffffff;
+  --purple: #6c3dd6;
+  --purple-soft: #efe8fb;
+  --yellow: #ffc43d;
+  --yellow-soft: #fff6dd;
+  --green: #2f9e6e;
+  --green-soft: #e4f7ee;
+  --red: #d64550;
+  --red-soft: #fdeaec;
+  --border: #ece6f8;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 8px 24px rgba(108, 61, 214, 0.10);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.55;
+}
+
+h1, h2, h3 {
+  font-family: 'Baloo 2', 'Plus Jakarta Sans', sans-serif;
+  margin: 0;
+  color: var(--ink);
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.screen {
+  display: none;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  min-height: 100vh;
+}
+
+.screen.active {
+  display: block;
+}
+
+/* ---------------------------------------------------------
+   TOPBAR / BACK
+--------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 18px;
+  --subject-color: var(--purple);
+}
+
+.topbar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topbar-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: none;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* ---------------------------------------------------------
+   HOME / HERO
+--------------------------------------------------------- */
+
+.hero {
+  padding: 22px 0 10px;
+}
+
+.hero-kicker {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  color: var(--purple);
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.hero h1 {
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.hero-sub {
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+  max-width: 46ch;
+}
+
+.search-bar {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 12px 18px;
+  box-shadow: var(--shadow);
+}
+
+.search-icon {
+  font-size: 1rem;
+}
+
+#search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.98rem;
+  width: 100%;
+  color: var(--ink);
+}
+
+.search-results {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-empty {
+  color: var(--ink-soft);
+  padding: 8px 4px;
+}
+
+.search-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-card-top {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.search-card h3 {
+  font-size: 1.1rem;
+}
+
+.search-card p {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.btn-start-zero {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.section-title {
+  margin-top: 30px;
+  margin-bottom: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.footnote {
+  margin-top: 34px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ---------------------------------------------------------
+   SUBJECT GRID (HOME)
+--------------------------------------------------------- */
+
+.subject-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.subject-card {
+  --subject-color: var(--purple);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  box-shadow: var(--shadow);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.subject-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--subject-color);
+}
+
+.subject-card:active {
+  transform: scale(0.98);
+}
+
+.subject-card-emoji {
+  font-size: 1.8rem;
+}
+
+.subject-card-name {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.subject-card-count {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+/* ---------------------------------------------------------
+   SUBJECT SCREEN: TOPIC LIST
+--------------------------------------------------------- */
+
+.subject-tagline {
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+
+.topic-group {
+  margin-bottom: 22px;
+}
+
+.topic-group-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--purple);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topic-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.topic-item:active {
+  transform: scale(0.99);
+}
+
+.topic-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.topic-item-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.topic-item-purpose {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+
+.topic-item-arrow {
+  color: var(--purple);
+  font-size: 1.3rem;
+}
+
+/* ---------------------------------------------------------
+   PILLS / BADGES
+--------------------------------------------------------- */
+
+.pill {
+  --pill-color: var(--purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--pill-color);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.pill-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+}
+
+.topic-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+/* ---------------------------------------------------------
+   TOPIC CONTENT BLOCKS
+--------------------------------------------------------- */
+
+.topic-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.block {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+
+.block h2 {
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+}
+
+.block p {
+  color: var(--ink);
+  font-size: 0.96rem;
+}
+
+.block-purpose {
+  background: var(--purple-soft);
+  border-color: transparent;
+}
+
+.block-golden {
+  background: var(--yellow-soft);
+  border-color: transparent;
+}
+
+.block-warning {
+  background: var(--red-soft);
+  border-color: transparent;
+}
+
+.block-comparison {
+  background: var(--green-soft);
+  border-color: transparent;
+}
+
+.symbol-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.symbol-list li {
+  font-size: 0.94rem;
+}
+
+.example-problem {
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--purple-soft);
+  border-radius: var(--radius-sm);
+}
+
+.steps-list, .method-list {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.steps-list li, .method-list li {
+  font-size: 0.94rem;
+}
+
+.block-explain-more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.extra-example-text {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.94rem;
+}
+
+/* ---------------------------------------------------------
+   FAQ
+--------------------------------------------------------- */
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+
+.faq-item summary {
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.94rem;
+}
+
+.faq-item p {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/* ---------------------------------------------------------
+   EXERCISE
+--------------------------------------------------------- */
+
+.block-exercise {
+  background: var(--purple);
+  border: none;
+}
+
+.block-exercise h2,
+.exercise-question {
+  color: #fff;
+}
+
+.exercise-question {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.exercise-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exercise-option {
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 0.94rem;
+  color: var(--ink);
+}
+
+.exercise-option:not(:disabled):active {
+  transform: scale(0.99);
+}
+
+.exercise-option.is-correct {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.exercise-option.is-wrong {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+.exercise-feedback {
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.exercise-feedback p {
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.exercise-feedback-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 0.98rem;
+}
+
+.feedback-correct .exercise-feedback-title {
+  color: var(--green);
+}
+
+.feedback-wrong .exercise-feedback-title {
+  color: var(--red);
+}
+
+/* ---------------------------------------------------------
+   BUTTONS
+--------------------------------------------------------- */
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 11px 20px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.btn-primary {
+  background: var(--purple);
+  color: #fff;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  background: var(--yellow-soft);
+  color: var(--ink);
+  border: 1px solid var(--yellow);
+  align-self: flex-start;
+}
+
+.btn-link {
+  background: transparent;
+  color: var(--purple);
+  text-decoration: underline;
+  padding: 8px 0;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+--------------------------------------------------------- */
+
+@media (min-width: 700px) {
+  .hero h1 {
+    font-size: 2.3rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .subject-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .screen {
+    padding: 16px 14px 56px;
+  }
+}
