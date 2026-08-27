@@ -1,17 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cleaning Organizer</title>
+<title>Estúdio do Livro</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237d3b3b'/%3E%3Cpath d='M28 26h30a10 10 0 0 1 10 10v40H38a10 10 0 0 0-10 10V26z' fill='%23f7f2e7'/%3E%3Cpath d='M28 26v60' stroke='%235e2b2b' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="theme-color" content="#17201c">
+<meta name="theme-color" content="#f7f2e7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Cleaning">
+<meta name="apple-mobile-web-app-title" content="Estúdio do Livro">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19,330 +18,337 @@
 </head>
 <body>
 
-<!-- LOCK SCREEN (PIN) -->
-<section id="screen-lock" class="screen">
-  <div class="lock-box">
-    <div class="app-logo">🧹</div>
-    <h1>Cleaning Organizer</h1>
-    <p id="lock-instructions">Enter your PIN to continue</p>
-    <input id="lock-input" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
-    <button id="lock-submit" class="btn btn-primary">Enter</button>
-    <p id="lock-error" class="error-text"></p>
-    <button id="lock-forgot" class="btn-link">Forgot my PIN</button>
-  </div>
-</section>
-
-<!-- HOME: HOUSE LIST -->
-<section id="screen-home" class="screen" data-tab="houses">
+<!-- HOME: BOOK LIST -->
+<section id="screen-home" class="screen active" data-tab="livros">
   <header class="topbar">
-    <h1>My houses</h1>
-    <button id="btn-add-house" class="btn-round-dark" title="Add house">+</button>
+    <h1>Meus livros</h1>
+    <button id="btn-add-book" class="btn-round-dark" title="Novo livro">+</button>
   </header>
 
-  <div class="hero-card">
-    <div class="hero-main">
-      <p class="hero-label">This week worked</p>
-      <p class="hero-value" id="hero-week-hours">0<span>hours</span></p>
-    </div>
-    <div class="hero-side">
-      <p class="hero-label">Month</p>
-      <p class="hero-side-value" id="hero-month-hours">0h</p>
-    </div>
-  </div>
-
-  <button id="today-banner" class="today-banner" hidden>
-    <span class="dot"></span>
-    <span id="today-banner-text"></span>
-    <span class="chev">›</span>
-  </button>
+  <p class="tagline">Estruture seu livro do zero: personagens ou pilares de conteúdo, estilo de escrita e tipo de narrativa — com um assistente de IA para ajudar a desenvolver a história.</p>
 
   <div class="search-bar">
-    <input id="search-input" type="text" placeholder="Search house or address...">
+    <input id="search-input" type="text" placeholder="Buscar por título...">
   </div>
 
-  <div id="house-list" class="house-list"></div>
+  <div id="book-list" class="house-list"></div>
 
   <p id="empty-state" class="empty-state" hidden>
-    No houses yet.<br>
-    Tap the <strong>+</strong> button to add your first house.
+    Você ainda não criou nenhum livro.<br>
+    Toque em <strong>+</strong> para começar a estruturar o seu primeiro livro.
   </p>
 </section>
 
-<!-- HOUSE FORM: ADD / EDIT -->
-<section id="screen-house-form" class="screen" data-tab="houses">
+<!-- NEW BOOK -->
+<section id="screen-book-setup" class="screen" data-tab="livros">
   <header class="topbar with-border">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
-    <h1 id="house-form-title" style="font-size:1.3rem;">New House</h1>
+    <h1 style="font-size:1.3rem;">Novo livro</h1>
   </header>
 
-  <form id="house-form" class="form">
-    <label>House name / nickname
-      <input id="input-name" type="text" placeholder="Ex: Mrs. Smith's house" required>
+  <form id="book-setup-form" class="form">
+    <label>Título do livro
+      <input id="input-book-title" type="text" placeholder="Ex: O Jardim de Sal" required>
     </label>
-    <label>Address
-      <textarea id="input-address" rows="2" placeholder="Street, number, city, state, ZIP"></textarea>
+    <label>Sobre o que é o seu livro?
+      <select id="select-book-theme" required></select>
     </label>
-    <label>Notes
-      <textarea id="input-notes" rows="3" placeholder="Ex: has a dog, trash day, alarm..."></textarea>
+    <p id="theme-hint" class="hint-text"></p>
+    <label>Sinopse ou ideia inicial <span style="font-weight:400;color:var(--ink-faint);">(opcional)</span>
+      <textarea id="input-book-synopsis" rows="4" placeholder="Um parágrafo curto sobre a ideia central, mesmo que ainda incompleta."></textarea>
     </label>
-    <button type="submit" class="btn btn-primary">Save</button>
+    <button type="submit" class="btn btn-primary">Criar livro</button>
   </form>
 </section>
 
-<!-- HOUSE DETAIL -->
-<section id="screen-house-detail" class="screen" data-tab="houses">
+<!-- BOOK DETAIL -->
+<section id="screen-book-detail" class="screen" data-tab="livros">
   <header class="topbar">
     <button class="icon-btn btn-back" data-back-to="screen-home">←</button>
     <div style="flex:1;"></div>
+    <button id="btn-delete-book" class="icon-btn" title="Excluir livro">🗑</button>
   </header>
   <div style="padding: 0 20px 4px;">
-    <h1 id="detail-name" style="font-size:1.7rem;">House</h1>
-    <p id="detail-subline" style="margin:2px 0 0;color:var(--ink-soft);font-size:0.85rem;"></p>
+    <h1 id="detail-title" style="font-size:1.7rem;">Livro</h1>
+    <p id="detail-theme-label" style="margin:2px 0 0;color:var(--ink-soft);font-size:0.85rem;"></p>
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="tab-info">Info</button>
-    <button class="tab-btn" data-tab="tab-codes">Codes</button>
-    <button class="tab-btn" data-tab="tab-checklist">Cleaning</button>
-    <button class="tab-btn" data-tab="tab-visits">Visits</button>
-    <button class="tab-btn" data-tab="tab-photos">Photos</button>
+    <button class="tab-btn active" data-tab="tab-overview">Visão geral</button>
+    <button class="tab-btn" data-tab="tab-characters">Personagens</button>
+    <button class="tab-btn" data-tab="tab-structure">Estrutura</button>
+    <button class="tab-btn" data-tab="tab-style">Estilo</button>
+    <button class="tab-btn" data-tab="tab-reference">Livro anterior</button>
+    <button class="tab-btn" data-tab="tab-ai">Assistente IA</button>
   </div>
 
-  <div id="tab-info" class="tab-content active">
+  <!-- OVERVIEW -->
+  <div id="tab-overview" class="tab-content active">
+    <form id="form-overview" class="form" style="padding:0;">
+      <label>Sinopse / premissa
+        <textarea id="input-overview-synopsis" rows="4"></textarea>
+      </label>
+      <label>Público-alvo
+        <input id="input-overview-audience" type="text" placeholder="Ex: mulheres 25-40 anos que querem mudar de carreira">
+      </label>
+      <label>Tom de voz
+        <input id="input-overview-tone" type="text" placeholder="Ex: inspirador, direto, bem-humorado, poético...">
+      </label>
+      <button type="submit" class="btn btn-primary">Salvar visão geral</button>
+    </form>
+    <p id="overview-stats" class="hint-text" style="margin-top:14px;"></p>
+  </div>
+
+  <!-- CHARACTERS (narrative themes) -->
+  <div id="tab-characters" class="tab-content">
+    <p class="hint-text">Para cada personagem, pense em quem ele é, o que ele <strong>representa</strong> na história (um valor, um medo, uma transformação) e como ele empurra o conflito para frente.</p>
+
     <div class="card">
-      <p class="label">Address</p>
-      <p id="detail-address" class="value"></p>
-      <a id="detail-map-link" class="btn-link" target="_blank" rel="noopener" style="padding-left:0;">Open in Maps →</a>
+      <p class="label">Perguntas guia da narrativa</p>
+      <form id="form-story-guide" class="form" style="padding:0;">
+        <label>Qual é o conflito central da história?
+          <textarea id="input-story-conflict" rows="2"></textarea>
+        </label>
+        <label>Cenário: onde e quando a história se passa?
+          <textarea id="input-story-setting" rows="2"></textarea>
+        </label>
+        <label>Qual é o tema ou mensagem central?
+          <textarea id="input-story-theme" rows="2"></textarea>
+        </label>
+        <label>Qual é o principal ponto de virada?
+          <textarea id="input-story-turningpoint" rows="2"></textarea>
+        </label>
+        <label>Como a história termina (ou fica em aberto)?
+          <textarea id="input-story-ending" rows="2"></textarea>
+        </label>
+        <button type="submit" class="btn btn-secondary">Salvar perguntas guia</button>
+      </form>
     </div>
+
+    <div class="section-heading-row">
+      <h3>Personagens</h3>
+      <button id="btn-add-character" class="pill-btn">+ Adicionar</button>
+    </div>
+    <div id="character-list" class="item-list"></div>
+    <p id="characters-empty" class="empty-state" hidden>Nenhum personagem cadastrado ainda.</p>
+
+    <form id="character-form" class="form card" hidden>
+      <input id="input-char-id" type="hidden">
+      <label>Nome do personagem
+        <input id="input-char-name" type="text" required>
+      </label>
+      <label>Papel na história
+        <select id="input-char-role">
+          <option>Protagonista</option>
+          <option>Antagonista</option>
+          <option>Coadjuvante</option>
+          <option>Mentor</option>
+          <option>Interesse amoroso</option>
+          <option>Narrador</option>
+          <option>Antagonista secundário</option>
+          <option>Outro</option>
+        </select>
+      </label>
+      <label>O que ele representa / simboliza?
+        <input id="input-char-represents" type="text" placeholder="Ex: a coragem de recomeçar, o medo de confiar...">
+      </label>
+      <label>Descrição / personalidade
+        <textarea id="input-char-description" rows="3"></textarea>
+      </label>
+      <label>Objetivo / motivação
+        <textarea id="input-char-goal" rows="2"></textarea>
+      </label>
+      <label>Conflito interno
+        <textarea id="input-char-conflict" rows="2"></textarea>
+      </label>
+      <label>Arco de transformação
+        <textarea id="input-char-arc" rows="2"></textarea>
+      </label>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;">Salvar personagem</button>
+        <button type="button" id="btn-cancel-character" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- STRUCTURE (mindset / non-fiction themes) -->
+  <div id="tab-structure" class="tab-content">
+    <p class="hint-text">Estas perguntas ajudam a estruturar o conteúdo antes de escrever o primeiro capítulo.</p>
+
+    <form id="form-structure" class="form card">
+      <label>Qual é a principal transformação que o leitor deve alcançar?
+        <textarea id="input-struct-transformation" rows="2"></textarea>
+      </label>
+      <label>Qual é a dor / problema principal do seu leitor hoje?
+        <textarea id="input-struct-pain" rows="2"></textarea>
+      </label>
+      <label>Quais crenças limitantes você quer desconstruir?
+        <textarea id="input-struct-beliefs" rows="2"></textarea>
+      </label>
+      <label>Que exercícios, reflexões ou desafios práticos o leitor deve fazer?
+        <textarea id="input-struct-exercises" rows="2"></textarea>
+      </label>
+      <label>Que histórias pessoais ou estudos de caso você vai usar?
+        <textarea id="input-struct-cases" rows="2"></textarea>
+      </label>
+      <label>Resumo do "antes e depois" que representa o livro
+        <textarea id="input-struct-beforeafter" rows="2"></textarea>
+      </label>
+      <label>Quem é o leitor ideal, e o que ele já tentou sem sucesso?
+        <textarea id="input-struct-idealreader" rows="2"></textarea>
+      </label>
+      <button type="submit" class="btn btn-secondary">Salvar estrutura</button>
+    </form>
+
+    <div class="section-heading-row">
+      <h3>Pilares / capítulos centrais</h3>
+      <button id="btn-add-pillar" class="pill-btn">+ Adicionar pilar</button>
+    </div>
+    <div id="pillar-list" class="item-list"></div>
+    <p id="pillars-empty" class="empty-state" hidden>Nenhum pilar cadastrado ainda.</p>
+
+    <form id="pillar-form" class="form card" hidden>
+      <input id="input-pillar-id" type="hidden">
+      <label>Título do pilar / capítulo
+        <input id="input-pillar-title" type="text" required>
+      </label>
+      <label>Do que ele trata?
+        <textarea id="input-pillar-description" rows="3"></textarea>
+      </label>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;">Salvar pilar</button>
+        <button type="button" id="btn-cancel-pillar" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- STYLE -->
+  <div id="tab-style" class="tab-content">
+    <form id="form-style" class="form" style="padding:0;">
+      <label>Tipo de escrita (ponto de vista)
+        <select id="input-writing-type">
+          <option>Primeira pessoa</option>
+          <option>Segunda pessoa</option>
+          <option>Terceira pessoa limitada</option>
+          <option>Terceira pessoa onisciente</option>
+          <option>Epistolar (cartas / diário)</option>
+          <option>Multinarrador (várias vozes)</option>
+          <option>Direto ao leitor (conversacional / não-ficção)</option>
+          <option>Outro</option>
+        </select>
+      </label>
+      <label>Tipo de narrativa (estrutura)
+        <select id="input-narrative-type">
+          <option>Linear / cronológica</option>
+          <option>Não linear (flashbacks e saltos no tempo)</option>
+          <option>Estrutura em três atos</option>
+          <option>Jornada do herói</option>
+          <option>Múltiplos POVs entrelaçados</option>
+          <option>Capítulos temáticos (comum em não-ficção)</option>
+          <option>Circular (começa e termina no mesmo ponto)</option>
+          <option>Outro</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary">Salvar estilo</button>
+    </form>
+  </div>
+
+  <!-- REFERENCE (previous book) -->
+  <div id="tab-reference" class="tab-content">
+    <p class="hint-text">Se você já tem um livro anterior (ou qualquer texto de referência do mesmo universo/estilo), envie o arquivo ou cole o texto aqui. O assistente de IA vai usar esse material para entender melhor o assunto e o seu estilo de escrita.</p>
+
     <div class="card">
-      <p class="label">Notes</p>
-      <p id="detail-notes" class="value"></p>
+      <p class="label">Enviar arquivo (.txt, .pdf ou .docx)</p>
+      <label class="btn btn-secondary photo-upload-label" style="margin-top:6px;">
+        Escolher arquivo
+        <input id="input-reference-file" type="file" accept=".txt,.pdf,.docx,text/plain,application/pdf" hidden>
+      </label>
+      <p id="reference-file-status" class="hint-text" style="margin-top:10px;" hidden></p>
     </div>
-    <button id="btn-share-pdf" class="btn btn-primary">Share as PDF</button>
-    <button id="btn-edit-house" class="btn btn-secondary">Edit house</button>
-    <button id="btn-delete-house" class="btn btn-danger">Delete this house</button>
+
+    <div class="card">
+      <p class="label">— ou cole o texto manualmente —</p>
+      <textarea id="input-reference-paste" rows="6" placeholder="Cole aqui um trecho do seu livro anterior..." style="width:100%;margin-top:8px;padding:12px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--hairline);font-family:inherit;font-size:0.95rem;"></textarea>
+      <button id="btn-save-reference-paste" class="btn btn-secondary">Salvar texto colado</button>
+    </div>
+
+    <div id="reference-current" class="card" hidden>
+      <p class="label">Referência salva</p>
+      <p id="reference-preview" class="value" style="max-height:140px;overflow:auto;"></p>
+      <button id="btn-remove-reference" class="btn btn-danger">Remover referência</button>
+    </div>
   </div>
 
-  <div id="tab-codes" class="tab-content">
-    <div id="door-codes-list" class="item-list"></div>
-    <form id="door-code-form" class="inline-form">
-      <input id="input-code-label" type="text" placeholder="Location (ex: Front door)" required>
-      <input id="input-code-value" type="text" placeholder="Password / code" required>
-      <button type="submit" class="btn btn-primary">Add</button>
+  <!-- AI ASSISTANT -->
+  <div id="tab-ai" class="tab-content">
+    <div id="ai-key-warning" class="warning-text" hidden>
+      Configure sua chave de API da Anthropic (Claude) em <strong>Ajustes</strong> para habilitar o assistente de IA.
+      <button id="btn-goto-settings-from-ai" class="btn-link" style="display:block;">Ir para Ajustes →</button>
+    </div>
+
+    <div id="ai-quick-actions" class="chip-row"></div>
+
+    <div id="chat-messages" class="chat-messages"></div>
+
+    <form id="chat-form" class="chat-input-row">
+      <textarea id="input-chat-message" rows="2" placeholder="Pergunte algo ou peça uma sugestão para o seu livro..."></textarea>
+      <button type="submit" class="btn btn-primary" style="width:auto;margin-top:0;">Enviar</button>
     </form>
-    <p class="warning-text">Saved on this device only. Be careful who has access to this phone.</p>
-  </div>
-
-  <div id="tab-checklist" class="tab-content">
-    <div class="checklist-header">
-      <span class="progress-text" id="checklist-progress-text">0 of 0 done</span>
-      <button id="btn-reset-checklist" class="btn-link">Reset</button>
-    </div>
-    <div id="room-groups"></div>
-    <form id="checklist-form" class="inline-form">
-      <select id="input-checklist-room"></select>
-      <input id="input-checklist-text" type="text" placeholder="Ex: Clean the tub" required>
-      <button type="submit" class="btn btn-primary">Add task</button>
-    </form>
-  </div>
-
-  <div id="tab-visits" class="tab-content">
-    <p class="hint-text">Schedule who's cleaning and when. Leave hours blank to schedule it for later — mark it complete once she's done, to log hours for pay.</p>
-    <form id="visit-form" class="inline-form">
-      <input id="input-visit-date" type="date" required>
-      <input id="input-visit-employee" type="text" list="employees-datalist" placeholder="Employee name" required>
-      <input id="input-visit-hours" type="number" step="0.25" min="0" placeholder="Hours worked (leave blank to schedule)">
-      <input id="input-visit-note" type="text" placeholder="Note (optional)">
-      <button type="submit" class="btn btn-primary">Save</button>
-    </form>
-    <div id="visits-list" class="item-list"></div>
-    <p id="visits-empty" class="empty-state" hidden>No visits scheduled or logged yet for this house.</p>
-  </div>
-
-  <div id="tab-photos" class="tab-content">
-    <label class="btn btn-primary photo-upload-label">
-      Add photo
-      <input id="input-photo" type="file" accept="image/*" multiple hidden>
-    </label>
-    <div id="photos-grid" class="photos-grid"></div>
+    <button id="btn-clear-chat" class="btn-link">Limpar conversa</button>
   </div>
 </section>
-
-<!-- CALENDAR -->
-<section id="screen-calendar" class="screen" data-tab="calendar">
-  <header class="topbar">
-    <h1>Calendar</h1>
-  </header>
-
-  <div class="calendar-nav">
-    <h2 id="calendar-month-label"></h2>
-    <div style="display:flex;gap:8px;">
-      <button id="btn-prev-month" class="icon-btn circle" title="Previous month">←</button>
-      <button id="btn-next-month" class="icon-btn circle" title="Next month">→</button>
-    </div>
-  </div>
-
-  <div class="calendar-weekdays">
-    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-  </div>
-  <div id="calendar-grid" class="calendar-grid"></div>
-  <p class="calendar-legend"><span class="day-dot pending"></span> Scheduled &nbsp; <span class="day-dot completed"></span> Completed</p>
-
-  <div class="section-heading-row">
-    <h3>Visits this month</h3>
-    <button id="btn-schedule-visit" class="pill-btn">+ Schedule</button>
-  </div>
-  <div id="calendar-visits-list" class="item-list" style="padding: 0 16px;"></div>
-  <p id="calendar-visits-empty" class="empty-state" hidden>No visits scheduled or logged this month.</p>
-</section>
-
-<!-- SCHEDULE A CLEANING -->
-<section id="screen-schedule-visit" class="screen" data-tab="calendar">
-  <header class="topbar with-border">
-    <button class="icon-btn btn-back" data-back-to="screen-calendar">←</button>
-    <h1 style="font-size:1.3rem;">Schedule Cleaning</h1>
-  </header>
-
-  <form id="schedule-visit-form" class="form">
-    <label>House
-      <select id="input-schedule-house" required></select>
-    </label>
-    <label>Date
-      <input id="input-schedule-date" type="date" required>
-    </label>
-    <label>Employee
-      <input id="input-schedule-employee" type="text" list="employees-datalist" placeholder="Employee name" required>
-    </label>
-    <label>Note
-      <input id="input-schedule-note" type="text" placeholder="Optional">
-    </label>
-    <button type="submit" class="btn btn-primary">Schedule</button>
-  </form>
-</section>
-
-<!-- TEAM -->
-<section id="screen-team" class="screen" data-tab="team">
-  <header class="topbar">
-    <h1>Team</h1>
-  </header>
-  <p id="team-subline" style="margin:0 20px 4px;color:var(--ink-soft);font-size:0.85rem;"></p>
-
-  <div class="hero-card">
-    <div class="hero-main">
-      <p class="hero-label" id="team-payroll-label">Payroll this week</p>
-      <p class="hero-value" id="team-payroll-amount">$0</p>
-    </div>
-    <button id="btn-export-payroll" class="hero-action">Export</button>
-  </div>
-  <p id="team-payroll-sub" style="margin:8px 16px 0;color:var(--ink-soft);font-size:0.8rem;"></p>
-
-  <div id="team-list" style="margin-top: 16px;"></div>
-  <p id="team-empty" class="empty-state" hidden>No employees yet — add one below, or one will be added automatically the first time you schedule a visit for her.</p>
-
-  <button id="btn-add-employee" class="add-employee-card">+ Add employee</button>
-</section>
-
-<!-- ADD EMPLOYEE -->
-<section id="screen-employee-form" class="screen" data-tab="team">
-  <header class="topbar with-border">
-    <button class="icon-btn btn-back" data-back-to="screen-team">←</button>
-    <h1 style="font-size:1.3rem;">New Employee</h1>
-  </header>
-  <form id="employee-form" class="form">
-    <label>Name
-      <input id="input-employee-name" type="text" required>
-    </label>
-    <label>Hourly rate ($/h)
-      <input id="input-employee-rate" type="number" min="0" step="0.5" value="20" required>
-    </label>
-    <button type="submit" class="btn btn-primary">Add Employee</button>
-  </form>
-</section>
-
-<datalist id="employees-datalist"></datalist>
 
 <!-- SETTINGS -->
-<section id="screen-settings" class="screen" data-tab="settings">
+<section id="screen-settings" class="screen" data-tab="ajustes">
   <header class="topbar">
-    <h1>Settings</h1>
+    <h1>Ajustes</h1>
   </header>
 
-  <div class="settings-card" style="margin-top:8px;">
-    <button id="btn-change-pin" class="settings-row">
-      <span>Change PIN</span>
-      <span class="row-meta">›</span>
-    </button>
+  <div class="card" style="margin:8px 16px;">
+    <p class="label">Assistente de IA</p>
+    <form id="form-ai-config" class="form" style="padding:0;">
+      <label>Provedor
+        <input type="text" value="Anthropic (Claude)" disabled>
+      </label>
+      <label>Modelo
+        <input id="input-ai-model" type="text" placeholder="claude-sonnet-5">
+      </label>
+      <label>Chave de API
+        <input id="input-ai-key" type="password" placeholder="sk-ant-...">
+      </label>
+      <button type="submit" class="btn btn-primary">Salvar configuração da IA</button>
+    </form>
+    <p class="warning-text" style="margin:14px 0 0;">
+      Sua chave fica salva <strong>apenas neste navegador</strong> (localStorage) e é usada para chamar a API da Anthropic diretamente do seu dispositivo — ela nunca passa por nenhum outro servidor. Não compartilhe essa chave. Crie a sua em console.anthropic.com.
+    </p>
+  </div>
+
+  <div class="settings-card">
     <button id="btn-export" class="settings-row">
-      <span>Export backup</span>
+      <span>Exportar backup</span>
       <span class="row-meta">JSON ›</span>
     </button>
     <label class="settings-row" for="input-import">
-      <span>Import backup</span>
+      <span>Importar backup</span>
       <span class="row-meta">JSON ›</span>
       <input id="input-import" type="file" accept="application/json">
     </label>
     <button id="btn-reset-all" class="settings-row danger">
-      <span>Erase all data</span>
+      <span>Apagar todos os dados</span>
       <span class="row-meta">›</span>
     </button>
   </div>
 
   <p class="storage-info" id="storage-info"></p>
-
-  <button id="btn-lock-app" class="btn btn-primary" style="margin: 8px 16px; width: calc(100% - 32px);">Lock app</button>
 </section>
-
-<div id="photo-viewer" class="photo-viewer" hidden>
-  <button id="photo-viewer-close" class="icon-btn photo-viewer-close">✕</button>
-  <button id="photo-viewer-delete" class="btn btn-danger photo-viewer-delete">Delete photo</button>
-  <img id="photo-viewer-img" src="" alt="Full-size photo">
-</div>
 
 <div id="toast" class="toast" hidden></div>
 
 <!-- Persistent bottom tab bar -->
 <nav id="tab-bar" class="tab-bar">
-  <button class="tab-bar-btn" data-target="screen-home"><span class="tab-dot"></span>Houses</button>
-  <button class="tab-bar-btn" data-target="screen-calendar"><span class="tab-dot"></span>Calendar</button>
-  <button class="tab-bar-btn" data-target="screen-team"><span class="tab-dot"></span>Team</button>
-  <button class="tab-bar-btn" data-target="screen-settings"><span class="tab-dot"></span>Settings</button>
+  <button class="tab-bar-btn" data-target="screen-home"><span class="tab-dot"></span>Livros</button>
+  <button class="tab-bar-btn" data-target="screen-settings"><span class="tab-dot"></span>Ajustes</button>
 </nav>
-
-<!-- Print-only view, used for "Share as PDF" -->
-<div id="print-house" class="print-house">
-  <h1 id="print-name"></h1>
-  <section>
-    <h2>Address</h2>
-    <p id="print-address"></p>
-  </section>
-  <section id="print-notes-section">
-    <h2>Notes</h2>
-    <p id="print-notes"></p>
-  </section>
-  <section id="print-codes-section">
-    <h2>Door codes</h2>
-    <ul id="print-codes-list"></ul>
-  </section>
-  <section id="print-checklist-section">
-    <h2>Cleaning checklist</h2>
-    <div id="print-checklist-groups"></div>
-  </section>
-  <p class="print-footer">Generated by Cleaning Organizer</p>
-</div>
-
-<!-- Print-only view, used for Team "Export" -->
-<div id="print-payroll" class="print-house">
-  <h1>Payroll</h1>
-  <section>
-    <h2 id="print-payroll-week"></h2>
-    <p id="print-payroll-total"></p>
-  </section>
-  <section>
-    <h2>By employee</h2>
-    <ul id="print-payroll-list"></ul>
-  </section>
-  <p class="print-footer">Generated by Cleaning Organizer</p>
-</div>
 
 <script src="js/app.js"></script>
 </body>

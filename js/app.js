@@ -2,32 +2,42 @@
 
 /* ---------- Constants / storage ---------- */
 
-const STORAGE_KEY = "cleaningOrganizer.houses";
-const VISITS_KEY = "cleaningOrganizer.visits";
-const EMPLOYEES_KEY = "cleaningOrganizer.employees";
-const PIN_KEY = "cleaningOrganizer.pin";
-const MAX_PHOTO_DIMENSION = 1000; // px - photos are resized before saving
-const PHOTO_QUALITY = 0.7;
-const DEFAULT_HOURLY_RATE = 20;
+const PROJECTS_KEY = "bookStudio.projects";
+const AI_CONFIG_KEY = "bookStudio.aiConfig";
+const REFERENCE_MAX_CHARS = 20000;
+const REFERENCE_CONTEXT_CHARS = 12000;
 
-const ROOMS = [
-  { key: "bathrooms", label: "Bathrooms" },
-  { key: "kitchen", label: "Kitchen" },
-  { key: "bedrooms", label: "Bedrooms" },
-  { key: "living_rooms", label: "Living Rooms" },
-  { key: "outdoor", label: "Outdoor Area" },
-  { key: "laundry", label: "Laundry" },
+const THEMES = [
+  { id: "ficcao", label: "Ficção literária", kind: "narrativa", emoji: "📖" },
+  { id: "fantasia", label: "Fantasia", kind: "narrativa", emoji: "🐉" },
+  { id: "romance", label: "Romance", kind: "narrativa", emoji: "💞" },
+  { id: "suspense", label: "Suspense / Mistério", kind: "narrativa", emoji: "🔎" },
+  { id: "infantil", label: "Infantil / Juvenil", kind: "narrativa", emoji: "🧸" },
+  { id: "biografia", label: "Biografia / Memórias", kind: "narrativa", emoji: "🕰️" },
+  { id: "mindset", label: "Mindset / Desenvolvimento pessoal", kind: "conteudo", emoji: "🧠" },
+  { id: "negocios", label: "Negócios / Carreira", kind: "conteudo", emoji: "💼" },
+  { id: "autoajuda", label: "Autoajuda / Espiritualidade", kind: "conteudo", emoji: "✨" },
+  { id: "outro", label: "Outro / Não-ficção geral", kind: "conteudo", emoji: "📝" },
+];
+
+const QUICK_ACTIONS_NARRATIVA = [
+  { label: "Sugerir personagens que faltam", prompt: "Com base no que já defini sobre a história, sugira 2 ou 3 personagens que ainda podem estar faltando, explicando o papel de cada um e o que ele representaria na trama." },
+  { label: "Desenvolver arco de um personagem", prompt: "Escolha o personagem mais central que eu já cadastrei e proponha um arco de transformação completo para ele, do início ao fim da história." },
+  { label: "Sugerir o conflito central", prompt: "Com base no que já escrevi, sugira possíveis versões para o conflito central da história e explique os prós e contras de cada uma." },
+  { label: "Criar um esboço de capítulos", prompt: "Crie um esboço de capítulos para este livro, considerando o tipo de narrativa e o tipo de escrita que escolhi." },
+  { label: "Analisar o livro anterior", prompt: "Analise o trecho do meu livro anterior que enviei como referência e me diga quais elementos de estilo, tom e vocabulário eu deveria manter neste novo livro." },
+];
+
+const QUICK_ACTIONS_CONTEUDO = [
+  { label: "Sugerir estrutura de capítulos", prompt: "Com base nas respostas que já dei, sugira uma estrutura completa de capítulos (pilares) para este livro, na ordem ideal de leitura." },
+  { label: "Aprofundar um pilar", prompt: "Escolha o pilar mais importante que já cadastrei e desenvolva os pontos principais, exemplos e um possível exercício prático para ele." },
+  { label: "Sugerir exercícios práticos", prompt: "Sugira exercícios práticos e reflexões que o leitor pode fazer ao longo do livro, conectados à transformação que quero proporcionar." },
+  { label: "Analisar o livro anterior", prompt: "Analise o trecho do meu livro anterior que enviei como referência e me diga quais elementos de estilo, tom e estrutura eu deveria manter neste novo livro." },
 ];
 
 let state = {
-  houses: [],
-  visits: [],
-  employees: [],
-  currentHouseId: null,
-  currentTab: "tab-info",
-  revealedCodes: new Set(),
-  calendarYear: null,
-  calendarMonth: null,
+  projects: [],
+  currentProjectId: null,
 };
 
 /* ---------- Utilities ---------- */
@@ -42,11 +52,16 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function initials(name) {
-  const words = (name || "").trim().split(/\s+/).filter((w) => /[a-zA-Z0-9]/.test(w));
-  if (!words.length) return "?";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+function formatDate(ts) {
+  try {
+    return new Date(ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  } catch (e) {
+    return "";
+  }
+}
+
+function getTheme(id) {
+  return THEMES.find((t) => t.id === id) || THEMES[THEMES.length - 1];
 }
 
 function showToast(msg) {
@@ -71,1123 +86,867 @@ function showScreen(id) {
   });
 }
 
+function navigateTab(target) {
+  if (target === "screen-home") renderHomeList();
+  if (target === "screen-settings") renderSettingsScreen();
+  showScreen(target);
+}
+
 document.querySelectorAll(".tab-bar-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.target;
-    if (target === "screen-home") renderHomeList();
-    if (target === "screen-calendar") openCalendar();
-    if (target === "screen-team") renderTeamScreen();
-    if (target === "screen-settings") renderStorageInfo();
-    showScreen(target);
-  });
+  btn.addEventListener("click", () => navigateTab(btn.dataset.target));
 });
 
-/* ---------- Storage: houses / visits / employees ---------- */
+document.querySelectorAll(".btn-back").forEach((btn) => {
+  btn.addEventListener("click", () => navigateTab(btn.dataset.backTo));
+});
 
-function loadHouses() {
+/* ---------- Storage: projects ---------- */
+
+function loadProjects() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    state.houses = raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    state.projects = raw ? JSON.parse(raw) : [];
   } catch (e) {
-    state.houses = [];
+    state.projects = [];
   }
-  migrateChecklistRooms();
 }
 
-// Older checklist items (before rooms existed) have no `room` field.
-// Assign them to the first room so nothing goes missing.
-function migrateChecklistRooms() {
-  let changed = false;
-  state.houses.forEach((h) => {
-    (h.checklist || []).forEach((item) => {
-      if (!item.room) {
-        item.room = ROOMS[0].key;
-        changed = true;
-      }
-    });
-  });
-  if (changed) saveHouses();
-}
-
-function saveHouses() {
+function saveProjects() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.houses));
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(state.projects));
     return true;
   } catch (e) {
-    showToast("Storage is full! Delete old photos to free up space.");
+    showToast("Armazenamento cheio! Remova alguma referência grande para liberar espaço.");
     return false;
   }
 }
 
-function getHouse(id) {
-  return state.houses.find((h) => h.id === id);
+function getCurrentProject() {
+  return state.projects.find((p) => p.id === state.currentProjectId);
 }
 
-function loadVisits() {
-  try {
-    const raw = localStorage.getItem(VISITS_KEY);
-    state.visits = raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    state.visits = [];
-  }
+function touch(project) {
+  project.updatedAt = Date.now();
 }
 
-function saveVisits() {
-  try {
-    localStorage.setItem(VISITS_KEY, JSON.stringify(state.visits));
-    return true;
-  } catch (e) {
-    showToast("Storage is full! Delete old photos to free up space.");
-    return false;
-  }
-}
-
-function loadEmployees() {
-  try {
-    const raw = localStorage.getItem(EMPLOYEES_KEY);
-    state.employees = raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    state.employees = [];
-  }
-  let changed = false;
-  state.employees.forEach((emp) => {
-    if (emp.hourlyRate === undefined || emp.hourlyRate === null) {
-      emp.hourlyRate = DEFAULT_HOURLY_RATE;
-      changed = true;
-    }
-  });
-  if (changed) saveEmployees();
-}
-
-function saveEmployees() {
-  try {
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(state.employees));
-  } catch (e) {
-    showToast("Storage is full! Delete old photos to free up space.");
-  }
-}
-
-function getEmployeeByName(name) {
-  const trimmed = (name || "").trim().toLowerCase();
-  return state.employees.find((emp) => emp.name.toLowerCase() === trimmed);
-}
-
-// Adds an employee to the roster if her name isn't already there
-// (case-insensitive). Called whenever a visit is scheduled/logged for
-// someone new, so the roster grows without needing to be set up first.
-function addEmployeeIfNew(name) {
-  const trimmed = name.trim();
-  if (!trimmed) return;
-  if (!getEmployeeByName(trimmed)) {
-    state.employees.push({ id: uuid(), name: trimmed, hourlyRate: DEFAULT_HOURLY_RATE });
-    saveEmployees();
-    renderEmployeeDatalist();
-  }
-}
-
-function renderEmployeeDatalist() {
-  const datalist = document.getElementById("employees-datalist");
-  datalist.innerHTML = "";
-  state.employees.forEach((emp) => {
-    const option = document.createElement("option");
-    option.value = emp.name;
-    datalist.appendChild(option);
-  });
-}
-
-/* ---------- Date / hours utilities ---------- */
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-// Formats a local Date as "YYYY-MM-DD" (matches <input type="date"> values).
-function toDateStr(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-// Parses a "YYYY-MM-DD" string as a local date (avoids the UTC-midnight
-// shift that `new Date("YYYY-MM-DD")` causes in negative UTC offsets).
-function parseDateStr(s) {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function formatDateDisplay(s) {
-  return parseDateStr(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function getWeekRange(refDate) {
-  const start = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - refDate.getDay());
-  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-  return { start, end };
-}
-
-function sumHours(visits) {
-  return visits.reduce((sum, v) => sum + (Number(v.hours) || 0), 0);
-}
-
-function formatHours(h) {
-  const rounded = Math.round(h * 100) / 100;
-  return `${rounded}h`;
-}
-
-function formatMoney(n) {
-  return `$${Math.round(n).toLocaleString("en-US")}`;
-}
-
-function getVisitsInRange(startStr, endStr) {
-  return state.visits.filter((v) => v.date >= startStr && v.date <= endStr);
-}
-
-function getMonthVisits(year, month) {
-  const prefix = `${year}-${pad2(month + 1)}`;
-  return state.visits.filter((v) => v.date.startsWith(prefix));
-}
-
-// A visit with no hours yet is scheduled but not completed.
-function isPendingVisit(v) {
-  return v.hours === null || v.hours === undefined;
-}
-
-function createVisitRowElement(visit, { showHouse, onChange }) {
-  const pending = isPendingVisit(visit);
-  const row = document.createElement("div");
-  row.className = "item-row";
-
-  const titleParts = [];
-  if (showHouse) {
-    const house = getHouse(visit.houseId);
-    titleParts.push(escapeHtml(house ? house.name : "Deleted house"));
-  }
-  titleParts.push(escapeHtml(visit.employeeName || "Unassigned"));
-
-  const subtitleParts = [formatDateDisplay(visit.date)];
-  if (visit.note) subtitleParts.push(escapeHtml(visit.note));
-
-  row.innerHTML = `
-    <div class="item-main">
-      <div class="item-title">${titleParts.join(" · ")}</div>
-      <div class="item-value">${subtitleParts.join(" · ")}</div>
-    </div>
-    ${pending
-      ? `<span class="visit-status pending">Scheduled</span><button class="btn-complete-visit">Complete</button>`
-      : `<span class="visit-status completed">${formatHours(visit.hours)}</span>`}
-    <button class="btn-delete-visit" title="Delete">🗑️</button>
-  `;
-
-  if (pending) {
-    row.querySelector(".btn-complete-visit").onclick = () => {
-      const input = prompt(`How many hours did ${visit.employeeName || "she"} spend at this house?`, "");
-      if (input === null) return;
-      const hours = parseFloat(input);
-      if (!input.trim() || isNaN(hours) || hours <= 0) {
-        alert("Please enter a valid number of hours.");
-        return;
-      }
-      visit.hours = hours;
-      saveVisits();
-      onChange();
-    };
-  }
-
-  row.querySelector(".btn-delete-visit").onclick = () => {
-    state.visits = state.visits.filter((v) => v.id !== visit.id);
-    saveVisits();
-    onChange();
+function createProject(title, themeId, synopsis) {
+  return {
+    id: uuid(),
+    title: title.trim(),
+    themeId,
+    synopsis: (synopsis || "").trim(),
+    audience: "",
+    tone: "",
+    writingType: "Primeira pessoa",
+    narrativeType: "Linear / cronológica",
+    storyGuide: { conflict: "", setting: "", theme: "", turningPoint: "", ending: "" },
+    characters: [],
+    structure: { transformation: "", pain: "", beliefs: "", exercises: "", cases: "", beforeAfter: "", idealReader: "" },
+    pillars: [],
+    reference: null,
+    chat: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
-
-  return row;
 }
 
-/* ---------- PIN / Lock screen ---------- */
+/* ---------- Home: book list ---------- */
 
-function initLockScreen() {
-  const savedPin = localStorage.getItem(PIN_KEY);
-  const instructions = document.getElementById("lock-instructions");
-  const input = document.getElementById("lock-input");
-  const errorEl = document.getElementById("lock-error");
-  const forgotBtn = document.getElementById("lock-forgot");
-
-  let mode = savedPin ? "unlock" : "create";
-  instructions.textContent = mode === "create"
-    ? "Create a PIN to protect your passwords (4 to 8 digits)"
-    : "Enter your PIN to continue";
-  forgotBtn.hidden = mode === "create";
-  input.value = "";
-  errorEl.textContent = "";
-
-  let pendingFirstPin = null;
-
-  function attempt() {
-    const value = input.value.trim();
-    errorEl.textContent = "";
-
-    if (mode === "create") {
-      if (value.length < 4) {
-        errorEl.textContent = "PIN must be at least 4 digits.";
-        return;
-      }
-      if (!pendingFirstPin) {
-        pendingFirstPin = value;
-        input.value = "";
-        instructions.textContent = "Enter the PIN again to confirm";
-        return;
-      }
-      if (pendingFirstPin !== value) {
-        errorEl.textContent = "PINs don't match. Try again.";
-        pendingFirstPin = null;
-        input.value = "";
-        instructions.textContent = "Create a PIN to protect your passwords (4 to 8 digits)";
-        return;
-      }
-      localStorage.setItem(PIN_KEY, value);
-      unlockApp();
-      return;
-    }
-
-    // mode === unlock
-    if (value === savedPin) {
-      unlockApp();
-    } else {
-      errorEl.textContent = "Incorrect PIN.";
-      input.value = "";
-    }
-  }
-
-  document.getElementById("lock-submit").onclick = attempt;
-  input.onkeydown = (e) => { if (e.key === "Enter") attempt(); };
-
-  forgotBtn.onclick = () => {
-    if (confirm("This will erase the current PIN (your house data stays saved). Continue?")) {
-      localStorage.removeItem(PIN_KEY);
-      initLockScreen();
-    }
-  };
-
-  showScreen("screen-lock");
-  setTimeout(() => input.focus(), 100);
-}
-
-function unlockApp() {
-  loadHouses();
-  loadVisits();
-  loadEmployees();
-  renderEmployeeDatalist();
-  renderHomeList();
-  showScreen("screen-home");
-}
-
-/* ---------- Generic navigation ---------- */
-
-document.addEventListener("click", (e) => {
-  const backBtn = e.target.closest(".btn-back");
-  if (backBtn) {
-    const target = backBtn.dataset.backTo;
-    if (target === "screen-home") renderHomeList();
-    if (target === "screen-calendar") renderCalendarScreen();
-    if (target === "screen-team") renderTeamScreen();
-    showScreen(target);
-  }
-});
-
-/* ---------- Home screen: house list ---------- */
-
-function getNextVisitForHouse(houseId) {
-  const today = toDateStr(new Date());
-  return state.visits
-    .filter((v) => v.houseId === houseId && isPendingVisit(v) && v.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
-}
-
-function getLastCompletedVisitForHouse(houseId) {
-  return state.visits
-    .filter((v) => v.houseId === houseId && !isPendingVisit(v))
-    .sort((a, b) => b.date.localeCompare(a.date))[0] || null;
-}
-
-function shortDayLabel(dateStr) {
-  const d = parseDateStr(dateStr);
-  const todayStr = toDateStr(new Date());
-  if (dateStr === todayStr) return "TODAY";
-  return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }).toUpperCase();
-}
-
-function renderHomeList(filterText) {
-  const list = document.getElementById("house-list");
+function renderHomeList() {
+  const list = document.getElementById("book-list");
   const empty = document.getElementById("empty-state");
-  const filter = (filterText ?? document.getElementById("search-input").value ?? "").toLowerCase().trim();
+  const term = (document.getElementById("search-input").value || "").toLowerCase();
 
-  const houses = state.houses.filter((h) => {
-    if (!filter) return true;
-    return h.name.toLowerCase().includes(filter) || (h.address || "").toLowerCase().includes(filter);
-  });
+  const projects = state.projects
+    .filter((p) => p.title.toLowerCase().includes(term))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 
   list.innerHTML = "";
-  empty.hidden = state.houses.length > 0;
+  empty.hidden = state.projects.length > 0;
 
-  houses.forEach((h) => {
+  projects.forEach((p) => {
+    const theme = getTheme(p.themeId);
+    const count = theme.kind === "narrativa"
+      ? `${p.characters.length} personagem(ns)`
+      : `${p.pillars.length} pilar(es)`;
+
     const card = document.createElement("div");
     card.className = "house-card";
-
-    const thumb = h.photos && h.photos[0]
-      ? `<img class="avatar" src="${h.photos[0].dataUrl}" alt="">`
-      : `<div class="avatar">${initials(h.name)}</div>`;
-
-    const next = getNextVisitForHouse(h.id);
-    let metaHtml;
-    if (next) {
-      metaHtml = `
-        <p class="meta-top">${shortDayLabel(next.date)}</p>
-        <p class="meta-bottom">${escapeHtml(next.employeeName || "")}</p>
-      `;
-    } else {
-      const last = getLastCompletedVisitForHouse(h.id);
-      metaHtml = last
-        ? `<p class="meta-top done">DONE</p><p class="meta-bottom">${escapeHtml(last.employeeName || "")}</p>`
-        : "";
-    }
-
     card.innerHTML = `
-      ${thumb}
+      <div class="avatar">${theme.emoji}</div>
       <div class="house-info">
-        <p class="house-name">${escapeHtml(h.name)}</p>
-        <p class="house-address">${escapeHtml(h.address || "No address")}</p>
+        <p class="house-name">${escapeHtml(p.title)}</p>
+        <p class="house-address">${escapeHtml(theme.label)}</p>
       </div>
-      <div class="house-meta">${metaHtml}</div>
-    `;
-    card.onclick = () => openHouseDetail(h.id);
+      <div class="house-meta">
+        <p class="meta-top">${count}</p>
+        <p class="meta-bottom">${formatDate(p.updatedAt)}</p>
+      </div>`;
+    card.addEventListener("click", () => openBookDetail(p.id));
     list.appendChild(card);
   });
-
-  updateHomeHero();
 }
 
-document.getElementById("search-input").addEventListener("input", (e) => renderHomeList(e.target.value));
+document.getElementById("search-input").addEventListener("input", renderHomeList);
 
-function updateHomeHero() {
-  const today = new Date();
-  const { start, end } = getWeekRange(today);
-  const weekVisits = getVisitsInRange(toDateStr(start), toDateStr(end));
-  const monthVisits = getMonthVisits(today.getFullYear(), today.getMonth());
+/* ---------- New book ---------- */
 
-  document.getElementById("hero-week-hours").innerHTML =
-    `${Math.round(sumHours(weekVisits) * 100) / 100}<span>hours</span>`;
-  document.getElementById("hero-month-hours").textContent = formatHours(sumHours(monthVisits));
-
-  // "Today" banner: today's visits first, else the nearest upcoming one.
-  const todayStr = toDateStr(today);
-  const upcoming = state.visits
-    .filter((v) => v.date >= todayStr)
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
-
-  const banner = document.getElementById("today-banner");
-  if (!upcoming) {
-    banner.hidden = true;
-    return;
-  }
-  const house = getHouse(upcoming.houseId);
-  const dayLabel = upcoming.date === todayStr ? "Today" : shortDayLabel(upcoming.date).replace(/^(\w{3}).*/, (m, d) => d.charAt(0) + d.slice(1).toLowerCase());
-  document.getElementById("today-banner-text").textContent =
-    `${dayLabel} · ${house ? house.name : "Deleted house"}${upcoming.employeeName ? " with " + upcoming.employeeName : ""}`;
-  banner.hidden = false;
-  banner.onclick = () => { if (house) openHouseDetail(house.id); };
-}
-
-document.getElementById("btn-lock-app").onclick = () => initLockScreen();
-
-/* ---------- Calendar ---------- */
-
-function openCalendar() {
-  const today = new Date();
-  state.calendarYear = today.getFullYear();
-  state.calendarMonth = today.getMonth();
-  renderCalendarScreen();
-}
-
-document.getElementById("btn-prev-month").onclick = () => {
-  state.calendarMonth--;
-  if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
-  renderCalendarScreen();
-};
-
-document.getElementById("btn-next-month").onclick = () => {
-  state.calendarMonth++;
-  if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
-  renderCalendarScreen();
-};
-
-function renderCalendarScreen() {
-  if (state.calendarYear === null) {
-    const today = new Date();
-    state.calendarYear = today.getFullYear();
-    state.calendarMonth = today.getMonth();
-  }
-  const year = state.calendarYear;
-  const month = state.calendarMonth;
-
-  const monthLabel = new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  document.getElementById("calendar-month-label").textContent = monthLabel;
-
-  const monthPrefix = `${year}-${pad2(month + 1)}`;
-  const monthVisits = getMonthVisits(year, month);
-
-  const grid = document.getElementById("calendar-grid");
-  grid.innerHTML = "";
-  const firstDay = new Date(year, month, 1);
-  const startWeekday = firstDay.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayStr = toDateStr(new Date());
-
-  for (let i = 0; i < startWeekday; i++) {
-    const empty = document.createElement("div");
-    empty.className = "calendar-day empty";
-    grid.appendChild(empty);
-  }
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${monthPrefix}-${pad2(day)}`;
-    const dayVisits = monthVisits.filter((v) => v.date === dateStr);
-    const hasPending = dayVisits.some(isPendingVisit);
-    const hasCompleted = dayVisits.some((v) => !isPendingVisit(v));
-    const cell = document.createElement("div");
-    cell.className = "calendar-day" + (dateStr === todayStr ? " today" : "");
-    let dotsHtml = "";
-    if (dayVisits.length) {
-      dotsHtml = `<span class="day-dots">`
-        + (hasPending ? `<span class="day-dot pending"></span>` : "")
-        + (hasCompleted ? `<span class="day-dot completed"></span>` : "")
-        + `</span>`;
-    }
-    cell.innerHTML = `<span>${day}</span>${dotsHtml}`;
-    grid.appendChild(cell);
-  }
-
-  const list = document.getElementById("calendar-visits-list");
-  const empty = document.getElementById("calendar-visits-empty");
-  list.innerHTML = "";
-  const sorted = [...monthVisits].sort((a, b) => b.date.localeCompare(a.date));
-  empty.hidden = sorted.length > 0;
-  sorted.forEach((v) => {
-    list.appendChild(createVisitRowElement(v, {
-      showHouse: true,
-      onChange: () => { renderCalendarScreen(); updateHomeHero(); },
-    }));
+function populateThemeSelect() {
+  const sel = document.getElementById("select-book-theme");
+  sel.innerHTML = "";
+  const narrGroup = document.createElement("optgroup");
+  narrGroup.label = "Narrativa (ficção)";
+  const contGroup = document.createElement("optgroup");
+  contGroup.label = "Conteúdo (não-ficção / mindset)";
+  THEMES.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = `${t.emoji} ${t.label}`;
+    (t.kind === "narrativa" ? narrGroup : contGroup).appendChild(opt);
   });
+  sel.appendChild(narrGroup);
+  sel.appendChild(contGroup);
+  updateThemeHint();
 }
 
-document.getElementById("btn-schedule-visit").onclick = () => {
-  if (!state.houses.length) {
-    showToast("Add a house first, then you can schedule a cleaning.");
-    return;
-  }
-  const select = document.getElementById("input-schedule-house");
-  select.innerHTML = "";
-  state.houses.forEach((h) => {
-    const option = document.createElement("option");
-    option.value = h.id;
-    option.textContent = h.name;
-    select.appendChild(option);
-  });
-  document.getElementById("input-schedule-date").value = toDateStr(new Date());
-  document.getElementById("input-schedule-employee").value = "";
-  document.getElementById("input-schedule-note").value = "";
-  renderEmployeeDatalist();
-  showScreen("screen-schedule-visit");
-};
+function updateThemeHint() {
+  const theme = getTheme(document.getElementById("select-book-theme").value);
+  document.getElementById("theme-hint").textContent = theme.kind === "narrativa"
+    ? "Esse tipo de livro terá uma aba de Personagens: nome, papel na história e o que cada um representa."
+    : "Esse tipo de livro terá uma aba de Estrutura: perguntas para organizar a transformação do leitor, as dores dele e os pilares/capítulos do método.";
+}
 
-document.getElementById("schedule-visit-form").addEventListener("submit", (e) => {
+document.getElementById("select-book-theme").addEventListener("change", updateThemeHint);
+
+document.getElementById("btn-add-book").addEventListener("click", () => {
+  document.getElementById("book-setup-form").reset();
+  populateThemeSelect();
+  showScreen("screen-book-setup");
+});
+
+document.getElementById("book-setup-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const houseId = document.getElementById("input-schedule-house").value;
-  const date = document.getElementById("input-schedule-date").value;
-  const employeeName = document.getElementById("input-schedule-employee").value.trim();
-  const note = document.getElementById("input-schedule-note").value.trim();
-  if (!houseId || !date || !employeeName) return;
-
-  addEmployeeIfNew(employeeName);
-  state.visits.push({ id: uuid(), houseId, date, employeeName, hours: null, note });
-  saveVisits();
-  renderCalendarScreen();
-  showScreen("screen-calendar");
-  showToast("Cleaning scheduled!");
+  const title = document.getElementById("input-book-title").value.trim();
+  if (!title) return;
+  const themeId = document.getElementById("select-book-theme").value;
+  const synopsis = document.getElementById("input-book-synopsis").value;
+  const project = createProject(title, themeId, synopsis);
+  state.projects.push(project);
+  saveProjects();
+  openBookDetail(project.id);
 });
 
-/* ---------- House form: add / edit ---------- */
+/* ---------- Book detail: navigation + rendering ---------- */
 
-let editingHouseId = null;
+function openBookDetail(id) {
+  state.currentProjectId = id;
+  selectDetailTab("tab-overview");
+  renderBookDetail();
+  showScreen("screen-book-detail");
+}
 
-document.getElementById("btn-add-house").onclick = () => {
-  editingHouseId = null;
-  document.getElementById("house-form-title").textContent = "New House";
-  document.getElementById("input-name").value = "";
-  document.getElementById("input-address").value = "";
-  document.getElementById("input-notes").value = "";
-  showScreen("screen-house-form");
-};
+function selectDetailTab(tabId) {
+  document.querySelectorAll("#screen-book-detail .tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
+  document.querySelectorAll("#screen-book-detail .tab-content").forEach((c) => c.classList.toggle("active", c.id === tabId));
+}
 
-document.getElementById("btn-edit-house").onclick = () => {
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  editingHouseId = h.id;
-  document.getElementById("house-form-title").textContent = "Edit House";
-  document.getElementById("input-name").value = h.name;
-  document.getElementById("input-address").value = h.address || "";
-  document.getElementById("input-notes").value = h.notes || "";
-  showScreen("screen-house-form");
-};
+document.querySelectorAll("#screen-book-detail .tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => selectDetailTab(btn.dataset.tab));
+});
 
-document.getElementById("house-form").addEventListener("submit", (e) => {
+document.getElementById("btn-delete-book").addEventListener("click", () => {
+  const p = getCurrentProject();
+  if (!p) return;
+  if (confirm(`Excluir "${p.title}"? Isso apaga personagens/estrutura, referência e conversas com a IA deste livro. Essa ação não pode ser desfeita.`)) {
+    state.projects = state.projects.filter((x) => x.id !== p.id);
+    saveProjects();
+    navigateTab("screen-home");
+  }
+});
+
+function renderBookDetail() {
+  const p = getCurrentProject();
+  if (!p) return;
+  const theme = getTheme(p.themeId);
+
+  document.getElementById("detail-title").textContent = p.title;
+  document.getElementById("detail-theme-label").textContent = `${theme.emoji} ${theme.label}`;
+
+  const charTabBtn = document.querySelector('.tab-btn[data-tab="tab-characters"]');
+  const structTabBtn = document.querySelector('.tab-btn[data-tab="tab-structure"]');
+  const isNarrativa = theme.kind === "narrativa";
+  charTabBtn.hidden = !isNarrativa;
+  structTabBtn.hidden = isNarrativa;
+
+  const activeBtn = document.querySelector("#screen-book-detail .tab-btn.active");
+  if (activeBtn && activeBtn.hidden) selectDetailTab("tab-overview");
+
+  // Overview
+  document.getElementById("input-overview-synopsis").value = p.synopsis;
+  document.getElementById("input-overview-audience").value = p.audience;
+  document.getElementById("input-overview-tone").value = p.tone;
+  updateOverviewStats();
+
+  // Story guide + characters
+  document.getElementById("input-story-conflict").value = p.storyGuide.conflict;
+  document.getElementById("input-story-setting").value = p.storyGuide.setting;
+  document.getElementById("input-story-theme").value = p.storyGuide.theme;
+  document.getElementById("input-story-turningpoint").value = p.storyGuide.turningPoint;
+  document.getElementById("input-story-ending").value = p.storyGuide.ending;
+  hideCharacterForm();
+  renderCharacterList();
+
+  // Structure + pillars
+  document.getElementById("input-struct-transformation").value = p.structure.transformation;
+  document.getElementById("input-struct-pain").value = p.structure.pain;
+  document.getElementById("input-struct-beliefs").value = p.structure.beliefs;
+  document.getElementById("input-struct-exercises").value = p.structure.exercises;
+  document.getElementById("input-struct-cases").value = p.structure.cases;
+  document.getElementById("input-struct-beforeafter").value = p.structure.beforeAfter;
+  document.getElementById("input-struct-idealreader").value = p.structure.idealReader;
+  hidePillarForm();
+  renderPillarList();
+
+  // Style
+  document.getElementById("input-writing-type").value = p.writingType;
+  document.getElementById("input-narrative-type").value = p.narrativeType;
+
+  // Reference
+  renderReference();
+
+  // AI
+  renderQuickActions();
+  renderChat();
+  updateAIKeyWarning();
+}
+
+function updateOverviewStats() {
+  const p = getCurrentProject();
+  const theme = getTheme(p.themeId);
+  const count = theme.kind === "narrativa"
+    ? `${p.characters.length} personagem(ns) cadastrados.`
+    : `${p.pillars.length} pilar(es) cadastrados.`;
+  document.getElementById("overview-stats").textContent = `Criado em ${formatDate(p.createdAt)}. ${count}`;
+}
+
+document.getElementById("form-overview").addEventListener("submit", (e) => {
   e.preventDefault();
-  const name = document.getElementById("input-name").value.trim();
-  const address = document.getElementById("input-address").value.trim();
-  const notes = document.getElementById("input-notes").value.trim();
-  if (!name) return;
-
-  if (editingHouseId) {
-    const h = getHouse(editingHouseId);
-    h.name = name;
-    h.address = address;
-    h.notes = notes;
-  } else {
-    state.houses.push({
-      id: uuid(),
-      name, address, notes,
-      doorCodes: [],
-      checklist: [],
-      photos: [],
-    });
-  }
-  saveHouses();
-
-  if (editingHouseId) {
-    openHouseDetail(editingHouseId);
-  } else {
-    renderHomeList();
-    showScreen("screen-home");
-  }
+  const p = getCurrentProject();
+  p.synopsis = document.getElementById("input-overview-synopsis").value;
+  p.audience = document.getElementById("input-overview-audience").value;
+  p.tone = document.getElementById("input-overview-tone").value;
+  touch(p);
+  saveProjects();
+  showToast("Visão geral salva.");
 });
 
-/* ---------- House detail ---------- */
-
-function openHouseDetail(id) {
-  state.currentHouseId = id;
-  const h = getHouse(id);
-  if (!h) return;
-
-  document.getElementById("detail-name").textContent = h.name;
-  const visitCount = state.visits.filter((v) => v.houseId === h.id && !isPendingVisit(v)).length;
-  document.getElementById("detail-subline").textContent =
-    `${h.address || "No address on file"} · ${visitCount} visit${visitCount === 1 ? "" : "s"} logged`;
-  document.getElementById("detail-address").textContent = h.address || "No address on file";
-  document.getElementById("detail-notes").textContent = h.notes || "No notes";
-
-  const mapLink = document.getElementById("detail-map-link");
-  if (h.address) {
-    mapLink.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(h.address);
-    mapLink.style.display = "inline-block";
-  } else {
-    mapLink.style.display = "none";
-  }
-
-  switchTab("tab-info");
-  renderDoorCodes(h);
-  renderChecklist(h);
-  renderPhotos(h);
-  renderVisits(h);
-  document.getElementById("input-visit-date").value = toDateStr(new Date());
-  document.getElementById("input-visit-employee").value = "";
-  document.getElementById("input-visit-hours").value = "";
-  document.getElementById("input-visit-note").value = "";
-
-  showScreen("screen-house-detail");
-}
-
-document.querySelectorAll(".tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+document.getElementById("form-story-guide").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = getCurrentProject();
+  p.storyGuide = {
+    conflict: document.getElementById("input-story-conflict").value,
+    setting: document.getElementById("input-story-setting").value,
+    theme: document.getElementById("input-story-theme").value,
+    turningPoint: document.getElementById("input-story-turningpoint").value,
+    ending: document.getElementById("input-story-ending").value,
+  };
+  touch(p);
+  saveProjects();
+  showToast("Perguntas guia salvas.");
 });
 
-function switchTab(tabId) {
-  state.currentTab = tabId;
-  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
-  document.querySelectorAll(".tab-content").forEach((c) => c.classList.toggle("active", c.id === tabId));
-}
+document.getElementById("form-structure").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = getCurrentProject();
+  p.structure = {
+    transformation: document.getElementById("input-struct-transformation").value,
+    pain: document.getElementById("input-struct-pain").value,
+    beliefs: document.getElementById("input-struct-beliefs").value,
+    exercises: document.getElementById("input-struct-exercises").value,
+    cases: document.getElementById("input-struct-cases").value,
+    beforeAfter: document.getElementById("input-struct-beforeafter").value,
+    idealReader: document.getElementById("input-struct-idealreader").value,
+  };
+  touch(p);
+  saveProjects();
+  showToast("Estrutura salva.");
+});
 
-document.getElementById("btn-delete-house").onclick = () => {
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  if (confirm(`Delete "${h.name}"? This will erase its address, codes, checklist, photos and logged visits.`)) {
-    state.houses = state.houses.filter((x) => x.id !== h.id);
-    state.visits = state.visits.filter((v) => v.houseId !== h.id);
-    saveHouses();
-    saveVisits();
-    renderHomeList();
-    showScreen("screen-home");
-  }
-};
+document.getElementById("form-style").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = getCurrentProject();
+  p.writingType = document.getElementById("input-writing-type").value;
+  p.narrativeType = document.getElementById("input-narrative-type").value;
+  touch(p);
+  saveProjects();
+  showToast("Estilo salvo.");
+});
 
-/* ---------- Cleaning visits (dates + hours worked) ---------- */
+/* ---------- Characters ---------- */
 
-function renderVisits(house) {
-  const list = document.getElementById("visits-list");
-  const empty = document.getElementById("visits-empty");
+function renderCharacterList() {
+  const p = getCurrentProject();
+  const list = document.getElementById("character-list");
+  const empty = document.getElementById("characters-empty");
   list.innerHTML = "";
-  const visits = state.visits
-    .filter((v) => v.houseId === house.id)
-    .sort((a, b) => b.date.localeCompare(a.date));
-  empty.hidden = visits.length > 0;
-  visits.forEach((v) => {
-    list.appendChild(createVisitRowElement(v, {
-      showHouse: false,
-      onChange: () => { renderVisits(house); updateHomeHero(); },
-    }));
-  });
-}
+  empty.hidden = p.characters.length > 0;
 
-document.getElementById("visit-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  const dateInput = document.getElementById("input-visit-date");
-  const employeeInput = document.getElementById("input-visit-employee");
-  const hoursInput = document.getElementById("input-visit-hours");
-  const noteInput = document.getElementById("input-visit-note");
-  const date = dateInput.value;
-  const employeeName = employeeInput.value.trim();
-  const hoursRaw = hoursInput.value.trim();
-  const hours = hoursRaw === "" ? null : parseFloat(hoursRaw);
-  const note = noteInput.value.trim();
-  if (!date || !employeeName) return;
-  if (hoursRaw !== "" && (isNaN(hours) || hours <= 0)) return;
-
-  addEmployeeIfNew(employeeName);
-  state.visits.push({ id: uuid(), houseId: h.id, date, employeeName, hours, note });
-  saveVisits();
-  dateInput.value = toDateStr(new Date());
-  employeeInput.value = "";
-  hoursInput.value = "";
-  noteInput.value = "";
-  renderVisits(h);
-  document.getElementById("detail-subline").textContent =
-    `${h.address || "No address on file"} · ${state.visits.filter((v) => v.houseId === h.id && !isPendingVisit(v)).length} visit(s) logged`;
-  showToast(hours === null ? "Cleaning scheduled!" : "Visit logged!");
-});
-
-/* ---------- Share as PDF ---------- */
-
-document.getElementById("btn-share-pdf").onclick = () => {
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-
-  document.getElementById("print-name").textContent = h.name;
-  document.getElementById("print-address").textContent = h.address || "No address on file";
-
-  const notesSection = document.getElementById("print-notes-section");
-  if (h.notes) {
-    notesSection.hidden = false;
-    document.getElementById("print-notes").textContent = h.notes;
-  } else {
-    notesSection.hidden = true;
-  }
-
-  const codesSection = document.getElementById("print-codes-section");
-  const codesList = document.getElementById("print-codes-list");
-  codesList.innerHTML = "";
-  if (h.doorCodes && h.doorCodes.length) {
-    codesSection.hidden = false;
-    h.doorCodes.forEach((code) => {
-      const li = document.createElement("li");
-      li.textContent = `${code.label}: ${code.value}`;
-      codesList.appendChild(li);
-    });
-  } else {
-    codesSection.hidden = true;
-  }
-
-  const checklistSection = document.getElementById("print-checklist-section");
-  const checklistGroups = document.getElementById("print-checklist-groups");
-  checklistGroups.innerHTML = "";
-  const hasItems = h.checklist && h.checklist.length;
-  if (hasItems) {
-    checklistSection.hidden = false;
-    ROOMS.forEach((room) => {
-      const items = h.checklist.filter((item) => item.room === room.key);
-      if (!items.length) return;
-      const heading = document.createElement("h3");
-      heading.textContent = room.label;
-      checklistGroups.appendChild(heading);
-      const ul = document.createElement("ul");
-      items.forEach((item) => {
-        const li = document.createElement("li");
-        li.textContent = `☐ ${item.text}`;
-        ul.appendChild(li);
-      });
-      checklistGroups.appendChild(ul);
-    });
-  } else {
-    checklistSection.hidden = true;
-  }
-
-  document.getElementById("print-payroll").hidden = true;
-  document.getElementById("print-house").hidden = false;
-  window.print();
-};
-
-/* ---------- Door codes ---------- */
-
-function renderDoorCodes(house) {
-  const list = document.getElementById("door-codes-list");
-  list.innerHTML = "";
-  (house.doorCodes || []).forEach((code) => {
-    const revealed = state.revealedCodes.has(code.id);
+  p.characters.forEach((c) => {
     const row = document.createElement("div");
     row.className = "item-row";
     row.innerHTML = `
       <div class="item-main">
-        <div class="item-title">${escapeHtml(code.label)}</div>
-        <div class="item-value ${revealed ? "" : "hidden-value"}">${revealed ? escapeHtml(code.value) : "• • • •"}</div>
+        <span class="role-badge">${escapeHtml(c.role)}</span>
+        <div class="item-title">${escapeHtml(c.name)}</div>
+        ${c.represents ? `<div class="item-value">Representa: ${escapeHtml(c.represents)}</div>` : ""}
       </div>
-      <button class="pill-btn btn-reveal">${revealed ? "Hide" : "Reveal"}</button>
-      <button class="btn-delete-code" title="Delete">🗑️</button>
-    `;
-    row.querySelector(".btn-reveal").onclick = () => {
-      if (revealed) state.revealedCodes.delete(code.id);
-      else state.revealedCodes.add(code.id);
-      renderDoorCodes(house);
-    };
-    row.querySelector(".btn-delete-code").onclick = () => {
-      house.doorCodes = house.doorCodes.filter((c) => c.id !== code.id);
-      saveHouses();
-      renderDoorCodes(house);
-    };
+      <button type="button" title="Excluir">🗑</button>`;
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      openCharacterForm(c.id);
+    });
+    row.querySelector("button").addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteCharacter(c.id);
+    });
     list.appendChild(row);
   });
 }
 
-document.getElementById("door-code-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  const labelInput = document.getElementById("input-code-label");
-  const valueInput = document.getElementById("input-code-value");
-  const label = labelInput.value.trim();
-  const value = valueInput.value.trim();
-  if (!label || !value) return;
-  h.doorCodes = h.doorCodes || [];
-  h.doorCodes.push({ id: uuid(), label, value });
-  saveHouses();
-  labelInput.value = "";
-  valueInput.value = "";
-  renderDoorCodes(h);
-});
-
-/* ---------- Checklist / cleaning process ---------- */
-
-// Populate the room <select> in the "add task" form once.
-(function initChecklistRoomSelect() {
-  const select = document.getElementById("input-checklist-room");
-  ROOMS.forEach((room) => {
-    const option = document.createElement("option");
-    option.value = room.key;
-    option.textContent = room.label;
-    select.appendChild(option);
-  });
-})();
-
-function renderChecklist(house) {
-  const container = document.getElementById("room-groups");
-  container.innerHTML = "";
-  const items = house.checklist || [];
-
-  ROOMS.forEach((room) => {
-    const roomItems = items.filter((item) => item.room === room.key);
-    if (!roomItems.length) return;
-
-    const group = document.createElement("div");
-    group.className = "room-group";
-    const title = document.createElement("p");
-    title.className = "room-title";
-    title.textContent = room.label;
-    group.appendChild(title);
-
-    const list = document.createElement("div");
-    list.className = "item-list";
-    roomItems.forEach((item) => {
-      const row = document.createElement("div");
-      row.className = "item-row" + (item.done ? " checked" : "");
-      row.innerHTML = `
-        <input type="checkbox" ${item.done ? "checked" : ""}>
-        <div class="item-main">
-          <div class="item-title">${escapeHtml(item.text)}</div>
-        </div>
-        <button class="btn-delete-item" title="Delete">🗑️</button>
-      `;
-      row.querySelector('input[type="checkbox"]').onchange = (e) => {
-        item.done = e.target.checked;
-        saveHouses();
-        renderChecklist(house);
-      };
-      row.querySelector(".btn-delete-item").onclick = () => {
-        house.checklist = house.checklist.filter((c) => c.id !== item.id);
-        saveHouses();
-        renderChecklist(house);
-      };
-      list.appendChild(row);
-    });
-    group.appendChild(list);
-    container.appendChild(group);
-  });
-
-  const done = items.filter((i) => i.done).length;
-  document.getElementById("checklist-progress-text").textContent = `${done} of ${items.length} done`;
+function hideCharacterForm() {
+  const form = document.getElementById("character-form");
+  form.hidden = true;
+  form.reset();
+  document.getElementById("input-char-id").value = "";
 }
 
-document.getElementById("checklist-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  const input = document.getElementById("input-checklist-text");
-  const roomSelect = document.getElementById("input-checklist-room");
-  const text = input.value.trim();
-  if (!text) return;
-  h.checklist = h.checklist || [];
-  h.checklist.push({ id: uuid(), text, done: false, room: roomSelect.value });
-  saveHouses();
-  input.value = "";
-  renderChecklist(h);
-});
-
-document.getElementById("btn-reset-checklist").onclick = () => {
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  (h.checklist || []).forEach((item) => { item.done = false; });
-  saveHouses();
-  renderChecklist(h);
-  showToast("Checklist reset for the next cleaning!");
-};
-
-/* ---------- Photos ---------- */
-
-function renderPhotos(house) {
-  const grid = document.getElementById("photos-grid");
-  grid.innerHTML = "";
-  (house.photos || []).forEach((photo) => {
-    const img = document.createElement("img");
-    img.src = photo.dataUrl;
-    img.alt = "";
-    img.onclick = () => openPhotoViewer(house, photo.id);
-    grid.appendChild(img);
-  });
-}
-
-function resizeImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = reject;
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > MAX_PHOTO_DIMENSION) {
-          height = Math.round((height * MAX_PHOTO_DIMENSION) / width);
-          width = MAX_PHOTO_DIMENSION;
-        } else if (height > MAX_PHOTO_DIMENSION) {
-          width = Math.round((width * MAX_PHOTO_DIMENSION) / height);
-          height = MAX_PHOTO_DIMENSION;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", PHOTO_QUALITY));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-document.getElementById("input-photo").addEventListener("change", async (e) => {
-  const h = getHouse(state.currentHouseId);
-  if (!h) return;
-  const files = Array.from(e.target.files || []);
-  h.photos = h.photos || [];
-  for (const file of files) {
-    try {
-      const dataUrl = await resizeImage(file);
-      h.photos.push({ id: uuid(), dataUrl });
-    } catch (err) {
-      showToast("Couldn't process one of the photos.");
-    }
+function openCharacterForm(id) {
+  const form = document.getElementById("character-form");
+  if (id) {
+    const p = getCurrentProject();
+    const c = p.characters.find((x) => x.id === id);
+    document.getElementById("input-char-id").value = c.id;
+    document.getElementById("input-char-name").value = c.name;
+    document.getElementById("input-char-role").value = c.role;
+    document.getElementById("input-char-represents").value = c.represents;
+    document.getElementById("input-char-description").value = c.description;
+    document.getElementById("input-char-goal").value = c.goal;
+    document.getElementById("input-char-conflict").value = c.conflict;
+    document.getElementById("input-char-arc").value = c.arc;
+  } else {
+    form.reset();
+    document.getElementById("input-char-id").value = "";
   }
-  const ok = saveHouses();
-  renderPhotos(h);
-  renderHomeList();
-  e.target.value = "";
-  if (!ok) {
-    // If saving failed (storage quota exceeded), undo the last addition in memory.
-    loadHouses();
-  }
-});
+  form.hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
-function openPhotoViewer(house, photoId) {
-  const photo = house.photos.find((p) => p.id === photoId);
-  if (!photo) return;
-  const viewer = document.getElementById("photo-viewer");
-  document.getElementById("photo-viewer-img").src = photo.dataUrl;
-  viewer.hidden = false;
-  document.getElementById("photo-viewer-delete").onclick = () => {
-    house.photos = house.photos.filter((p) => p.id !== photoId);
-    saveHouses();
-    renderPhotos(house);
-    renderHomeList();
-    viewer.hidden = true;
+document.getElementById("btn-add-character").addEventListener("click", () => openCharacterForm(null));
+document.getElementById("btn-cancel-character").addEventListener("click", hideCharacterForm);
+
+document.getElementById("character-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const p = getCurrentProject();
+  const id = document.getElementById("input-char-id").value;
+  const data = {
+    name: document.getElementById("input-char-name").value.trim(),
+    role: document.getElementById("input-char-role").value,
+    represents: document.getElementById("input-char-represents").value.trim(),
+    description: document.getElementById("input-char-description").value,
+    goal: document.getElementById("input-char-goal").value,
+    conflict: document.getElementById("input-char-conflict").value,
+    arc: document.getElementById("input-char-arc").value,
   };
+  if (!data.name) return;
+  if (id) {
+    Object.assign(p.characters.find((c) => c.id === id), data);
+  } else {
+    data.id = uuid();
+    p.characters.push(data);
+  }
+  touch(p);
+  saveProjects();
+  hideCharacterForm();
+  renderCharacterList();
+  updateOverviewStats();
+  showToast("Personagem salvo.");
+});
+
+function deleteCharacter(id) {
+  const p = getCurrentProject();
+  const c = p.characters.find((x) => x.id === id);
+  if (!c) return;
+  if (!confirm(`Remover o personagem "${c.name}"?`)) return;
+  p.characters = p.characters.filter((x) => x.id !== id);
+  touch(p);
+  saveProjects();
+  hideCharacterForm();
+  renderCharacterList();
+  updateOverviewStats();
 }
 
-document.getElementById("photo-viewer-close").onclick = () => {
-  document.getElementById("photo-viewer").hidden = true;
-};
+/* ---------- Pillars ---------- */
 
-/* ---------- Team (employees, hours & pay) ---------- */
-
-function computeWeeklyPay(refDate) {
-  const { start, end } = getWeekRange(refDate);
-  const weekVisits = getVisitsInRange(toDateStr(start), toDateStr(end)).filter((v) => !isPendingVisit(v));
-
-  const rows = state.employees.map((emp) => {
-    const empVisits = weekVisits.filter((v) => (v.employeeName || "").toLowerCase() === emp.name.toLowerCase());
-    const hours = sumHours(empVisits);
-    return { employee: emp, hours, visitCount: empVisits.length, pay: hours * (emp.hourlyRate || 0) };
-  });
-
-  const totalPay = rows.reduce((sum, r) => sum + r.pay, 0);
-  const totalHours = rows.reduce((sum, r) => sum + r.hours, 0);
-  const peopleWithHours = rows.filter((r) => r.hours > 0).length;
-
-  return { start, end, rows, totalPay, totalHours, peopleWithHours };
-}
-
-function renderTeamScreen() {
-  const { start, end, rows, totalPay, totalHours, peopleWithHours } = computeWeeklyPay(new Date());
-
-  document.getElementById("team-subline").textContent =
-    `Hours and pay for the week of ${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-  document.getElementById("team-payroll-amount").textContent = formatMoney(totalPay);
-  document.getElementById("team-payroll-sub").textContent =
-    `${Math.round(totalHours * 100) / 100} hours · ${peopleWithHours} people`;
-
-  const list = document.getElementById("team-list");
-  const empty = document.getElementById("team-empty");
+function renderPillarList() {
+  const p = getCurrentProject();
+  const list = document.getElementById("pillar-list");
+  const empty = document.getElementById("pillars-empty");
   list.innerHTML = "";
-  const sortedRows = [...rows].sort((a, b) => a.employee.name.localeCompare(b.employee.name));
-  empty.hidden = sortedRows.length > 0;
+  empty.hidden = p.pillars.length > 0;
 
-  sortedRows.forEach(({ employee, hours, visitCount, pay }) => {
-    const card = document.createElement("div");
-    card.className = "employee-card";
-    card.innerHTML = `
-      <div class="employee-top">
-        <div class="avatar round">${initials(employee.name)}</div>
-        <div class="employee-info">
-          <div class="employee-name">${escapeHtml(employee.name)}</div>
-          <div class="employee-sub">${formatHours(hours)} · ${visitCount} visit${visitCount === 1 ? "" : "s"}</div>
-        </div>
-        <div class="employee-pay">
-          <div class="pay-amount">${formatMoney(pay)}</div>
-          <div class="pay-label">This week</div>
-        </div>
+  p.pillars.forEach((pl) => {
+    const row = document.createElement("div");
+    row.className = "item-row";
+    row.innerHTML = `
+      <div class="item-main">
+        <div class="item-title">${escapeHtml(pl.title)}</div>
+        ${pl.description ? `<div class="item-value">${escapeHtml(pl.description)}</div>` : ""}
       </div>
-      <div class="rate-row">
-        <span class="rate-label">Hourly rate</span>
-        <div class="rate-stepper">
-          <button class="rate-minus" type="button">−</button>
-          <span class="rate-value">$${employee.hourlyRate}/h</span>
-          <button class="rate-plus" type="button">+</button>
-        </div>
-      </div>
-      <div class="employee-remove"><button type="button">Remove</button></div>
-    `;
-    card.querySelector(".rate-minus").onclick = () => {
-      employee.hourlyRate = Math.max(0, (employee.hourlyRate || 0) - 1);
-      saveEmployees();
-      renderTeamScreen();
-    };
-    card.querySelector(".rate-plus").onclick = () => {
-      employee.hourlyRate = (employee.hourlyRate || 0) + 1;
-      saveEmployees();
-      renderTeamScreen();
-    };
-    card.querySelector(".employee-remove button").onclick = () => {
-      if (confirm(`Remove ${employee.name} from your team?`)) {
-        state.employees = state.employees.filter((e) => e.id !== employee.id);
-        saveEmployees();
-        renderEmployeeDatalist();
-        renderTeamScreen();
-      }
-    };
-    list.appendChild(card);
+      <button type="button" title="Excluir">🗑</button>`;
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      openPillarForm(pl.id);
+    });
+    row.querySelector("button").addEventListener("click", (e) => {
+      e.stopPropagation();
+      deletePillar(pl.id);
+    });
+    list.appendChild(row);
   });
 }
 
-document.getElementById("btn-add-employee").onclick = () => {
-  document.getElementById("input-employee-name").value = "";
-  document.getElementById("input-employee-rate").value = DEFAULT_HOURLY_RATE;
-  showScreen("screen-employee-form");
-};
+function hidePillarForm() {
+  const form = document.getElementById("pillar-form");
+  form.hidden = true;
+  form.reset();
+  document.getElementById("input-pillar-id").value = "";
+}
 
-document.getElementById("employee-form").addEventListener("submit", (e) => {
+function openPillarForm(id) {
+  const form = document.getElementById("pillar-form");
+  if (id) {
+    const p = getCurrentProject();
+    const pl = p.pillars.find((x) => x.id === id);
+    document.getElementById("input-pillar-id").value = pl.id;
+    document.getElementById("input-pillar-title").value = pl.title;
+    document.getElementById("input-pillar-description").value = pl.description;
+  } else {
+    form.reset();
+    document.getElementById("input-pillar-id").value = "";
+  }
+  form.hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+document.getElementById("btn-add-pillar").addEventListener("click", () => openPillarForm(null));
+document.getElementById("btn-cancel-pillar").addEventListener("click", hidePillarForm);
+
+document.getElementById("pillar-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  const name = document.getElementById("input-employee-name").value.trim();
-  const rate = parseFloat(document.getElementById("input-employee-rate").value);
-  if (!name || isNaN(rate) || rate < 0) return;
-  if (getEmployeeByName(name)) {
-    alert("There's already someone on your team with that name.");
+  const p = getCurrentProject();
+  const id = document.getElementById("input-pillar-id").value;
+  const data = {
+    title: document.getElementById("input-pillar-title").value.trim(),
+    description: document.getElementById("input-pillar-description").value,
+  };
+  if (!data.title) return;
+  if (id) {
+    Object.assign(p.pillars.find((x) => x.id === id), data);
+  } else {
+    data.id = uuid();
+    p.pillars.push(data);
+  }
+  touch(p);
+  saveProjects();
+  hidePillarForm();
+  renderPillarList();
+  updateOverviewStats();
+  showToast("Pilar salvo.");
+});
+
+function deletePillar(id) {
+  const p = getCurrentProject();
+  const pl = p.pillars.find((x) => x.id === id);
+  if (!pl) return;
+  if (!confirm(`Remover o pilar "${pl.title}"?`)) return;
+  p.pillars = p.pillars.filter((x) => x.id !== id);
+  touch(p);
+  saveProjects();
+  hidePillarForm();
+  renderPillarList();
+  updateOverviewStats();
+}
+
+/* ---------- Reference (previous book) ---------- */
+
+let pdfjsLoadPromise = null;
+let mammothLoadPromise = null;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Falha ao carregar biblioteca externa"));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensurePdfJs() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+  if (!pdfjsLoadPromise) {
+    pdfjsLoadPromise = loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js").then(() => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    });
+  }
+  await pdfjsLoadPromise;
+  return window.pdfjsLib;
+}
+
+async function ensureMammoth() {
+  if (window.mammoth) return window.mammoth;
+  if (!mammothLoadPromise) {
+    mammothLoadPromise = loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+  }
+  await mammothLoadPromise;
+  return window.mammoth;
+}
+
+async function extractTextFromFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".txt") || file.type === "text/plain") {
+    return await file.text();
+  }
+  if (name.endsWith(".pdf")) {
+    const pdfjsLib = await ensurePdfJs();
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let text = "";
+    const maxPages = Math.min(pdf.numPages, 80);
+    for (let i = 1; i <= maxPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((it) => it.str).join(" ") + "\n\n";
+      if (text.length > REFERENCE_MAX_CHARS * 2) break;
+    }
+    return text;
+  }
+  if (name.endsWith(".docx")) {
+    const mammoth = await ensureMammoth();
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buf });
+    return result.value;
+  }
+  throw new Error("Formato não suportado — use .txt, .pdf ou .docx");
+}
+
+function saveReference(source, fileName, text) {
+  const p = getCurrentProject();
+  const truncated = text.length > REFERENCE_MAX_CHARS;
+  p.reference = {
+    source,
+    fileName: fileName || null,
+    text: text.slice(0, REFERENCE_MAX_CHARS),
+    truncated,
+    addedAt: Date.now(),
+  };
+  touch(p);
+  saveProjects();
+  renderReference();
+}
+
+function renderReference() {
+  const p = getCurrentProject();
+  const card = document.getElementById("reference-current");
+  const preview = document.getElementById("reference-preview");
+  document.getElementById("reference-file-status").hidden = true;
+
+  if (p.reference && p.reference.text) {
+    card.hidden = false;
+    const label = p.reference.fileName ? `Arquivo: ${p.reference.fileName}` : "Texto colado manualmente";
+    const snippet = p.reference.text.slice(0, 600);
+    preview.textContent = `${label} — ${p.reference.text.length.toLocaleString("pt-BR")} caracteres salvos\n\n${snippet}${p.reference.text.length > 600 ? "…" : ""}`;
+  } else {
+    card.hidden = true;
+  }
+}
+
+document.getElementById("input-reference-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const status = document.getElementById("reference-file-status");
+  status.hidden = false;
+  status.textContent = `Lendo "${file.name}"...`;
+  try {
+    const text = await extractTextFromFile(file);
+    if (!text || !text.trim()) throw new Error("Não encontramos texto nesse arquivo.");
+    saveReference("file", file.name, text);
+    status.hidden = true;
+    showToast(`"${file.name}" processado com sucesso.`);
+  } catch (err) {
+    status.textContent = `Não foi possível ler esse arquivo automaticamente (${err.message || err}). Use a opção de colar texto abaixo.`;
+  }
+  e.target.value = "";
+});
+
+document.getElementById("btn-save-reference-paste").addEventListener("click", () => {
+  const textarea = document.getElementById("input-reference-paste");
+  const text = textarea.value.trim();
+  if (!text) return;
+  saveReference("paste", null, text);
+  textarea.value = "";
+  showToast("Texto de referência salvo.");
+});
+
+document.getElementById("btn-remove-reference").addEventListener("click", () => {
+  const p = getCurrentProject();
+  if (!confirm("Remover o material de referência deste livro?")) return;
+  p.reference = null;
+  touch(p);
+  saveProjects();
+  renderReference();
+});
+
+/* ---------- AI assistant ---------- */
+
+function getAIConfig() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem(AI_CONFIG_KEY));
+    return cfg && typeof cfg === "object" ? cfg : { model: "claude-sonnet-5", apiKey: "" };
+  } catch (e) {
+    return { model: "claude-sonnet-5", apiKey: "" };
+  }
+}
+
+function saveAIConfig(cfg) {
+  localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(cfg));
+}
+
+function updateAIKeyWarning() {
+  const cfg = getAIConfig();
+  document.getElementById("ai-key-warning").hidden = !!cfg.apiKey;
+}
+
+document.getElementById("btn-goto-settings-from-ai").addEventListener("click", () => navigateTab("screen-settings"));
+
+document.getElementById("form-ai-config").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const model = document.getElementById("input-ai-model").value.trim() || "claude-sonnet-5";
+  const apiKey = document.getElementById("input-ai-key").value.trim();
+  saveAIConfig({ model, apiKey });
+  updateAIKeyWarning();
+  showToast("Configuração de IA salva.");
+});
+
+function renderQuickActions() {
+  const p = getCurrentProject();
+  const theme = getTheme(p.themeId);
+  const container = document.getElementById("ai-quick-actions");
+  container.innerHTML = "";
+  const actions = theme.kind === "narrativa" ? QUICK_ACTIONS_NARRATIVA : QUICK_ACTIONS_CONTEUDO;
+  actions.forEach((a) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.textContent = a.label;
+    btn.addEventListener("click", () => sendChatMessage(a.prompt));
+    container.appendChild(btn);
+  });
+}
+
+function renderChat() {
+  const p = getCurrentProject();
+  const container = document.getElementById("chat-messages");
+  container.innerHTML = "";
+  if (!p.chat.length) {
+    const hint = document.createElement("p");
+    hint.className = "empty-state";
+    hint.style.padding = "24px 8px";
+    hint.textContent = "Use os botões acima ou escreva sua pergunta para começar a conversar com o assistente.";
+    container.appendChild(hint);
     return;
   }
-  state.employees.push({ id: uuid(), name, hourlyRate: rate });
-  saveEmployees();
-  renderEmployeeDatalist();
-  renderTeamScreen();
-  showScreen("screen-team");
-});
+  p.chat.forEach((m) => {
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${m.role}`;
+    bubble.textContent = m.content;
+    container.appendChild(bubble);
+  });
+  container.scrollTop = container.scrollHeight;
+}
 
-document.getElementById("btn-export-payroll").onclick = () => {
-  const { start, end, rows, totalPay, totalHours } = computeWeeklyPay(new Date());
-  const weekLabel = `Week of ${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-  document.getElementById("print-payroll-week").textContent = weekLabel;
-  document.getElementById("print-payroll-total").textContent =
-    `Total: ${formatMoney(totalPay)} · ${Math.round(totalHours * 100) / 100} hours`;
+function buildSystemPrompt(p) {
+  const theme = getTheme(p.themeId);
+  const lines = [];
+  lines.push("Você é um assistente de escrita que responde sempre em português do Brasil, ajudando o autor a desenvolver e estruturar o livro descrito abaixo.");
+  lines.push("Seja específico e prático. Baseie-se no que já foi definido; quando faltar informação, faça perguntas objetivas em vez de inventar detalhes que possam contradizer decisões do autor.");
+  lines.push("");
+  lines.push("## Dados do livro");
+  lines.push(`Título: ${p.title}`);
+  lines.push(`Gênero/tema: ${theme.label}`);
+  if (p.synopsis) lines.push(`Sinopse: ${p.synopsis}`);
+  if (p.audience) lines.push(`Público-alvo: ${p.audience}`);
+  if (p.tone) lines.push(`Tom de voz: ${p.tone}`);
+  lines.push(`Tipo de escrita (ponto de vista): ${p.writingType}`);
+  lines.push(`Tipo de narrativa (estrutura): ${p.narrativeType}`);
 
-  const list = document.getElementById("print-payroll-list");
-  list.innerHTML = "";
-  rows.filter((r) => r.hours > 0).forEach((r) => {
-    const li = document.createElement("li");
-    li.textContent = `${r.employee.name}: ${formatHours(r.hours)} × $${r.employee.hourlyRate}/h = ${formatMoney(r.pay)}`;
-    list.appendChild(li);
+  if (theme.kind === "narrativa") {
+    const g = p.storyGuide;
+    if (g.conflict || g.setting || g.theme || g.turningPoint || g.ending) {
+      lines.push("");
+      lines.push("## Perguntas guia da narrativa");
+      if (g.conflict) lines.push(`Conflito central: ${g.conflict}`);
+      if (g.setting) lines.push(`Cenário: ${g.setting}`);
+      if (g.theme) lines.push(`Tema/mensagem central: ${g.theme}`);
+      if (g.turningPoint) lines.push(`Ponto de virada: ${g.turningPoint}`);
+      if (g.ending) lines.push(`Desfecho: ${g.ending}`);
+    }
+    if (p.characters.length) {
+      lines.push("");
+      lines.push("## Personagens");
+      p.characters.forEach((c) => {
+        lines.push(`- ${c.name} (${c.role})${c.represents ? " — representa: " + c.represents : ""}`);
+        if (c.description) lines.push(`  Descrição: ${c.description}`);
+        if (c.goal) lines.push(`  Objetivo/motivação: ${c.goal}`);
+        if (c.conflict) lines.push(`  Conflito interno: ${c.conflict}`);
+        if (c.arc) lines.push(`  Arco de transformação: ${c.arc}`);
+      });
+    }
+  } else {
+    const s = p.structure;
+    lines.push("");
+    lines.push("## Estrutura de conteúdo");
+    if (s.transformation) lines.push(`Transformação prometida ao leitor: ${s.transformation}`);
+    if (s.pain) lines.push(`Dor/problema do leitor hoje: ${s.pain}`);
+    if (s.beliefs) lines.push(`Crenças limitantes a desconstruir: ${s.beliefs}`);
+    if (s.exercises) lines.push(`Exercícios práticos previstos: ${s.exercises}`);
+    if (s.cases) lines.push(`Histórias/estudos de caso previstos: ${s.cases}`);
+    if (s.beforeAfter) lines.push(`Resumo "antes e depois": ${s.beforeAfter}`);
+    if (s.idealReader) lines.push(`Leitor ideal: ${s.idealReader}`);
+    if (p.pillars.length) {
+      lines.push("");
+      lines.push("## Pilares / capítulos centrais");
+      p.pillars.forEach((pl) => {
+        lines.push(`- ${pl.title}${pl.description ? ": " + pl.description : ""}`);
+      });
+    }
+  }
+
+  if (p.reference && p.reference.text) {
+    lines.push("");
+    lines.push("## Trecho de referência (livro anterior do autor, use para entender assunto/estilo)");
+    lines.push(p.reference.text.slice(0, REFERENCE_CONTEXT_CHARS));
+  }
+
+  return lines.join("\n");
+}
+
+async function callClaude(systemPrompt, messages, cfg) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": cfg.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: cfg.model || "claude-sonnet-5",
+      max_tokens: 1200,
+      system: systemPrompt,
+      messages: messages.length ? messages : [{ role: "user", content: "Olá" }],
+    }),
   });
 
-  document.getElementById("print-house").hidden = true;
-  document.getElementById("print-payroll").hidden = false;
-  window.print();
-};
+  if (!resp.ok) {
+    let detail = "";
+    try {
+      const j = await resp.json();
+      detail = (j.error && j.error.message) || JSON.stringify(j);
+    } catch (e) {
+      detail = await resp.text();
+    }
+    throw new Error(`Erro da API (${resp.status}): ${detail.slice(0, 300)}`);
+  }
+
+  const data = await resp.json();
+  const block = (data.content || []).find((b) => b.type === "text");
+  return block ? block.text : "(resposta vazia)";
+}
+
+async function sendChatMessage(userText) {
+  const p = getCurrentProject();
+  const cfg = getAIConfig();
+  if (!cfg.apiKey) {
+    updateAIKeyWarning();
+    showToast("Configure sua chave de API em Ajustes primeiro.");
+    return;
+  }
+
+  p.chat.push({ role: "user", content: userText, ts: Date.now() });
+  touch(p);
+  saveProjects();
+  renderChat();
+
+  const container = document.getElementById("chat-messages");
+  const loadingBubble = document.createElement("div");
+  loadingBubble.className = "chat-bubble assistant";
+  loadingBubble.textContent = "Pensando...";
+  container.appendChild(loadingBubble);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const systemPrompt = buildSystemPrompt(p);
+    const history = p.chat
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-16)
+      .map((m) => ({ role: m.role, content: m.content }));
+    const reply = await callClaude(systemPrompt, history, cfg);
+    p.chat.push({ role: "assistant", content: reply, ts: Date.now() });
+  } catch (err) {
+    p.chat.push({ role: "system", content: `⚠️ ${err.message || "Erro ao falar com a IA."}`, ts: Date.now() });
+  }
+  touch(p);
+  saveProjects();
+  renderChat();
+}
+
+document.getElementById("chat-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const textarea = document.getElementById("input-chat-message");
+  const msg = textarea.value.trim();
+  if (!msg) return;
+  textarea.value = "";
+  sendChatMessage(msg);
+});
+
+document.getElementById("btn-clear-chat").addEventListener("click", () => {
+  const p = getCurrentProject();
+  if (!p.chat.length) return;
+  if (!confirm("Limpar toda a conversa com a IA deste livro?")) return;
+  p.chat = [];
+  touch(p);
+  saveProjects();
+  renderChat();
+});
 
 /* ---------- Settings ---------- */
 
-document.getElementById("btn-change-pin").onclick = () => {
-  if (confirm("Erase the current PIN and create a new one now?")) {
-    localStorage.removeItem(PIN_KEY);
-    initLockScreen();
-  }
-};
+function renderSettingsScreen() {
+  const cfg = getAIConfig();
+  document.getElementById("input-ai-model").value = cfg.model || "";
+  document.getElementById("input-ai-key").value = cfg.apiKey || "";
+  renderStorageInfo();
+}
 
 document.getElementById("btn-export").onclick = () => {
-  const data = JSON.stringify({ houses: state.houses, visits: state.visits, employees: state.employees }, null, 2);
+  const data = JSON.stringify({ projects: state.projects }, null, 2);
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   const date = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `cleaning-backup-${date}.json`;
+  a.download = `estudio-do-livro-backup-${date}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1201,35 +960,18 @@ document.getElementById("input-import").addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const imported = JSON.parse(reader.result);
-      // Older backups were a bare array of houses (no visits/employees included).
-      const importedHouses = Array.isArray(imported) ? imported : imported.houses;
-      const importedVisits = Array.isArray(imported) ? [] : (imported.visits || []);
-      const importedEmployees = Array.isArray(imported) ? [] : (imported.employees || []);
-      if (!Array.isArray(importedHouses)) throw new Error("Invalid format");
+      const importedProjects = Array.isArray(imported) ? imported : imported.projects;
+      if (!Array.isArray(importedProjects)) throw new Error("Formato inválido");
       const merge = confirm(
-        "MERGE this backup with your current houses?\n\nOK = merge (adds the houses/visits/employees from the backup)\nCancel = REPLACE everything with the backup"
+        "MESCLAR este backup com seus livros atuais?\n\nOK = mesclar (adiciona os livros do backup)\nCancelar = SUBSTITUIR tudo pelo backup"
       );
-      if (merge) {
-        state.houses = state.houses.concat(importedHouses);
-        state.visits = state.visits.concat(importedVisits);
-        importedEmployees.forEach((emp) => addEmployeeIfNew(emp.name));
-      } else {
-        state.houses = importedHouses;
-        state.visits = importedVisits;
-        state.employees = importedEmployees.map((emp) => ({
-          ...emp,
-          hourlyRate: emp.hourlyRate ?? DEFAULT_HOURLY_RATE,
-        }));
-        saveEmployees();
-      }
-      saveHouses();
-      saveVisits();
+      state.projects = merge ? state.projects.concat(importedProjects) : importedProjects;
+      saveProjects();
       renderHomeList();
       renderStorageInfo();
-      renderEmployeeDatalist();
-      showToast("Backup imported successfully!");
+      showToast("Backup importado com sucesso!");
     } catch (err) {
-      alert("Couldn't read this backup file.");
+      alert("Não foi possível ler esse arquivo de backup.");
     }
   };
   reader.readAsText(file);
@@ -1237,26 +979,27 @@ document.getElementById("input-import").addEventListener("change", (e) => {
 });
 
 document.getElementById("btn-reset-all").onclick = () => {
-  if (confirm("This will erase ALL houses, codes, photos, visits, employees and the PIN. This can't be undone. Continue?")) {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(VISITS_KEY);
-    localStorage.removeItem(EMPLOYEES_KEY);
-    localStorage.removeItem(PIN_KEY);
+  if (confirm("Isso vai apagar TODOS os livros, personagens, estrutura e a chave de IA salva. Essa ação não pode ser desfeita. Continuar?")) {
+    localStorage.removeItem(PROJECTS_KEY);
+    localStorage.removeItem(AI_CONFIG_KEY);
     location.reload();
   }
 };
 
 function renderStorageInfo() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || "";
+    const raw = localStorage.getItem(PROJECTS_KEY) || "";
     const kb = Math.round((raw.length * 2) / 1024);
-    document.getElementById("storage-info").textContent =
-      `Storage used on this device: ~${kb} KB · ${state.houses.length} house(s) saved`;
+    document.getElementById("storage-info").textContent = `${state.projects.length} livro(s) salvos neste navegador · ~${kb} KB usados`;
   } catch (e) {
     document.getElementById("storage-info").textContent = "";
   }
 }
 
-/* ---------- Initialization ---------- */
+/* ---------- Init ---------- */
 
-initLockScreen();
+loadProjects();
+populateThemeSelect();
+renderHomeList();
+updateAIKeyWarning();
+showScreen("screen-home");
