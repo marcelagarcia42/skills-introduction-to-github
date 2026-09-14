@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markaê Onboarding — Loja de Kits de Boas-Vindas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">M</span>
+    <div>
+      <p class="brand-name">Markaê Onboarding</p>
+      <p class="brand-sub">Kits de boas-vindas personalizados para novos colaboradores</p>
+    </div>
+  </div>
+  <button id="btn-open-cart" class="cart-btn">
+    🛒 <span id="cart-count">0</span>
+  </button>
+</header>
+
+<section class="hero">
+  <p class="hero-eyebrow">Feito em São Joaquim da Barra/SP — atendemos Orlândia, Ituverava e região</p>
+  <h1>O primeiro dia de trabalho também merece ser inesquecível.</h1>
+  <p class="hero-text">Monte o kit de integração da sua empresa com produção própria: impressão UV, DTUV, acrílico e prensa térmica. Cada peça carrega a identidade da sua marca — e a sensação de pertencimento do novo colaborador.</p>
+</section>
+
+<section class="section" id="kits">
+  <div class="section-heading">
+    <h2>Kits de Onboarding</h2>
+    <p class="section-note">Valores estimados por colaborador. Preço final depende de quantidade, cores e materiais — solicite orçamento fechado.</p>
+  </div>
+  <div id="kits-grid" class="kits-grid"></div>
+</section>
+
+<section class="section" id="produtos">
+  <div class="section-heading">
+    <h2>Produtos avulsos</h2>
+    <p class="section-note">Monte seu próprio kit item por item.</p>
+  </div>
+  <div id="products-grid" class="products-grid"></div>
+</section>
+
+<section class="section" id="capacidade">
+  <div class="section-heading">
+    <h2>Como produzimos</h2>
+  </div>
+  <div class="capability-grid">
+    <div class="capability-card">
+      <p class="capability-icon">🖨️</p>
+      <p class="capability-title">Impressão UV — Mimaki UCJV300</p>
+      <p class="capability-text">Alta definição em acrílico, canecas, agendas e superfícies rígidas.</p>
+    </div>
+    <div class="capability-card">
+      <p class="capability-icon">🎨</p>
+      <p class="capability-title">DTF / DTUV</p>
+      <p class="capability-text">Estampas duráveis em camisetas, mochilas e tecidos.</p>
+    </div>
+    <div class="capability-card">
+      <p class="capability-icon">🔷</p>
+      <p class="capability-title">Corte e gravação em acrílico</p>
+      <p class="capability-text">Crachás, troféus e peças de identificação institucional.</p>
+    </div>
+    <div class="capability-card">
+      <p class="capability-icon">☕</p>
+      <p class="capability-title">Prensa térmica</p>
+      <p class="capability-text">Canecas e camisetas personalizadas com acabamento profissional.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CARRINHO -->
+<div id="cart-overlay" class="cart-overlay" hidden></div>
+<aside id="cart-panel" class="cart-panel" hidden>
+  <header class="cart-panel-header">
+    <h2>Seu pedido</h2>
+    <button id="btn-close-cart" class="icon-btn">✕</button>
+  </header>
+
+  <div id="cart-items" class="cart-items"></div>
+  <p id="cart-empty" class="empty-state" hidden>Seu carrinho está vazio. Adicione um kit ou produto avulso.</p>
+
+  <div class="cart-summary">
+    <div class="cart-summary-row">
+      <span>Subtotal estimado</span>
+      <strong id="cart-subtotal">R$ 0,00</strong>
+    </div>
+    <p class="cart-summary-note">*Valores de referência. Sujeitos a confirmação conforme quantidade final, cores e prazo.</p>
+  </div>
+
+  <form id="quote-form" class="quote-form">
+    <label>Empresa
+      <input id="input-company" type="text" placeholder="Nome da empresa" required>
+    </label>
+    <label>Pessoa de contato
+      <input id="input-contact" type="text" placeholder="Nome do responsável">
+    </label>
+    <label>Nº de novos colaboradores
+      <input id="input-headcount" type="number" min="1" placeholder="Ex: 20">
+    </label>
+    <label>Observações
+      <textarea id="input-message" rows="3" placeholder="Cores da marca, prazo desejado, logotipo, etc."></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary">Enviar pedido de orçamento pelo WhatsApp</button>
+    <button type="button" id="btn-copy-summary" class="btn btn-secondary">Copiar resumo do pedido</button>
+  </form>
+</aside>
+
+<div id="toast" class="toast" hidden></div>
+
+<footer class="footer">
+  <p><strong>Markaê</strong> — produtos corporativos personalizados</p>
+  <p class="footer-sub">Esta página é uma vitrine para apresentação e coleta de pedidos de orçamento — não processa pagamentos.</p>
+</footer>
+
+<script src="js/app.js"></script>
+</body>
+</html>
